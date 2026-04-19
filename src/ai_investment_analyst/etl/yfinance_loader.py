@@ -57,6 +57,12 @@ def infer_instrument_type(ticker: str) -> str:
     return "index" if ticker.startswith("^") else "stock"
 
 
+def _row_id(row: Any) -> str:
+    if isinstance(row, dict):
+        return row["id"]
+    return row[0]
+
+
 def ensure_data_source(cur) -> str:
     cur.execute(
         """
@@ -79,7 +85,7 @@ def ensure_data_source(cur) -> str:
             "Imported by ai-investment-analyst yfinance loader",
         ),
     )
-    return cur.fetchone()[0]
+    return _row_id(cur.fetchone())
 
 
 def get_market_id(cur, market_code: str) -> str:
@@ -87,7 +93,7 @@ def get_market_id(cur, market_code: str) -> str:
     row = cur.fetchone()
     if not row:
         raise ValueError(f"Market {market_code} not found. Did you run schema seed?")
-    return row[0]
+    return _row_id(row)
 
 
 def upsert_symbol(cur, market_id: str, spec: TickerSpec, info: dict[str, Any]) -> str:
@@ -139,7 +145,7 @@ def upsert_symbol(cur, market_id: str, spec: TickerSpec, info: dict[str, Any]) -
             json.dumps(metadata, ensure_ascii=False),
         ),
     )
-    return cur.fetchone()[0]
+    return _row_id(cur.fetchone())
 
 
 def create_ingestion_run(cur, data_source_id: str, market_id: str, tickers: list[str]) -> str:
@@ -160,7 +166,7 @@ def create_ingestion_run(cur, data_source_id: str, market_id: str, tickers: list
             json.dumps({"tickers": tickers}, ensure_ascii=False),
         ),
     )
-    return cur.fetchone()[0]
+    return _row_id(cur.fetchone())
 
 
 def finalize_ingestion_run(
