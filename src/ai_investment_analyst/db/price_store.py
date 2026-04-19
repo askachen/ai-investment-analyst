@@ -13,12 +13,39 @@ PRICE_SOURCE_PRIORITY: dict[tuple[str, str], list[str]] = {
 
 DEFAULT_PRIORITY = ["yfinance", "finmind", "finlab"]
 
+RAW_ROW_COLUMNS = [
+    "id",
+    "symbol_id",
+    "data_source_id",
+    "trading_date",
+    "open_price",
+    "high_price",
+    "low_price",
+    "close_price",
+    "adjusted_close",
+    "price_change",
+    "change_percent",
+    "volume",
+    "turnover_value",
+    "trade_count",
+    "raw_payload",
+    "source_code",
+    "market_code",
+    "instrument_type",
+]
+
 
 def _priority_rank(market_code: str, instrument_type: str, source_code: str) -> int:
     priority = PRICE_SOURCE_PRIORITY.get((market_code, instrument_type), DEFAULT_PRIORITY)
     if source_code in priority:
         return priority.index(source_code)
     return len(priority) + 100
+
+
+def _row_dict(row: Any) -> dict[str, Any]:
+    if isinstance(row, dict):
+        return row
+    return dict(zip(RAW_ROW_COLUMNS, row))
 
 
 def upsert_price_daily_raw(
@@ -120,7 +147,7 @@ def refresh_price_daily_canonical(cur, *, symbol_id: str, trading_date) -> None:
         """,
         (symbol_id, trading_date),
     )
-    rows = cur.fetchall()
+    rows = [_row_dict(row) for row in cur.fetchall()]
     if not rows:
         return
 
