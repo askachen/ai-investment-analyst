@@ -47,16 +47,16 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
 
         cur.execute(
             """
-            SELECT mr.revenue_period, mr.revenue, mr.revenue_month_change_percent, mr.revenue_year_change_percent
+            SELECT mr.revenue_period, mr.revenue
             FROM monthly_revenues mr
             JOIN symbols s ON s.id = mr.symbol_id
             WHERE s.ticker = %s
             ORDER BY mr.revenue_period DESC
-            LIMIT 1
+            LIMIT 13
             """,
             (ticker,),
         )
-        revenue_row = cur.fetchone()
+        revenue_rows = cur.fetchall()
 
     points = [
         PricePoint(
@@ -67,14 +67,28 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
         for row in price_rows
     ]
     latest = points[0] if points else None
+
     latest_revenue = None
-    if revenue_row:
+    if revenue_rows:
+        latest_period = revenue_rows[0][0].isoformat()
+        latest_value = revenue_rows[0][1]
+        previous_month_value = revenue_rows[1][1] if len(revenue_rows) >= 2 else None
+        previous_year_value = revenue_rows[12][1] if len(revenue_rows) >= 13 else None
+
+        revenue_month_change_percent = None
+        revenue_year_change_percent = None
+        if latest_value is not None and previous_month_value not in (None, Decimal("0")):
+            revenue_month_change_percent = ((latest_value - previous_month_value) / previous_month_value) * Decimal("100")
+        if latest_value is not None and previous_year_value not in (None, Decimal("0")):
+            revenue_year_change_percent = ((latest_value - previous_year_value) / previous_year_value) * Decimal("100")
+
         latest_revenue = RevenuePoint(
-            revenue_period=revenue_row[0].isoformat(),
-            revenue=revenue_row[1],
-            revenue_month_change_percent=revenue_row[2],
-            revenue_year_change_percent=revenue_row[3],
+            revenue_period=latest_period,
+            revenue=latest_value,
+            revenue_month_change_percent=revenue_month_change_percent,
+            revenue_year_change_percent=revenue_year_change_percent,
         )
+
     return StockReportContext(ticker=ticker, latest=latest, recent_prices=points, latest_revenue=latest_revenue)
 
 
@@ -87,6 +101,20 @@ def _pct_change(new: Decimal | None, old: Decimal | None) -> str:
 
 def _fmt_decimal(value: Decimal | None) -> str:
     return "N/A" if value is None else f"{value}"
+
+
+def _revenue_trend_text(revenue: RevenuePoint | None) -> str:
+    if not revenue:
+        return "尚無月營收資料。"
+    mom = revenue.revenue_month_change_percent
+    yoy = revenue.revenue_year_change_percent
+    if mom is None and yoy is None:
+        return "月營收資料已取得，但尚無法計算月增率與年增率。"
+    if (mom is not None and mom > 0) and (yoy is not None and yoy > 0):
+        return "最新月營收呈現月增、年增，基本面動能偏正向。"
+    if (mom is not None and mom < 0) and (yoy is not None and yoy < 0):
+        return "最新月營收呈現月減、年減，需留意基本面動能轉弱。"
+    return "最新月營收變化方向分歧，建議搭配更多基本面資料一起判讀。"
 
 
 def generate_stock_report(ticker: str) -> str:
@@ -125,6 +153,7 @@ def generate_stock_report(ticker: str) -> str:
                 f"- 最新月營收：{_fmt_decimal(revenue.revenue)}",
                 f"- 月增率：{_fmt_decimal(revenue.revenue_month_change_percent)}%",
                 f"- 年增率：{_fmt_decimal(revenue.revenue_year_change_percent)}%",
+                f"- 營收趨勢判讀：{_revenue_trend_text(revenue)}",
             ]
         )
 
