@@ -10,13 +10,14 @@ import yfinance as yf
 from psycopg.rows import dict_row
 
 from ai_investment_analyst.db.connection import get_connection
+from ai_investment_analyst.db.price_store import refresh_price_daily_canonical, upsert_price_daily_raw
 
 DEFAULT_TICKERS: tuple[str, ...] = (
-    "^TWII",   # 台股加權指數
-    "^IXIC",   # 納斯達克綜合指數
-    "^DJI",    # 道瓊工業指數
-    "2454.TW", # 聯發科
-    "2330.TW", # 台積電
+    "^TWII",
+    "^IXIC",
+    "^DJI",
+    "2454.TW",
+    "2330.TW",
 )
 
 
@@ -160,7 +161,7 @@ def create_ingestion_run(cur, data_source_id: str, market_id: str, tickers: list
         (
             data_source_id,
             "manual-yfinance-load",
-            "symbols,price_daily",
+            "price_daily_raw,price_daily_canonical",
             market_id,
             "running",
             json.dumps({"tickers": tickers}, ensure_ascii=False),
@@ -169,184 +170,90 @@ def create_ingestion_run(cur, data_source_id: str, market_id: str, tickers: list
     return _row_id(cur.fetchone())
 
 
-def finalize_ingestion_run(
-    cur,
-    ingestion_run_id: str,
-    *,
-    status: str,
-    records_received: int,
-    records_inserted: int,
-    records_updated: int,
-    records_failed: int,
-    error_message: str | None = None,
-) -> None:
+def finalize_ingestion_run(cur, ingestion_run_id: str, *, status: str, records_received: int, records_inserted: int, records_updated: int, records_failed: int, error_message: str | None = None) -> None:
     cur.execute(
         """
         UPDATE ingestion_runs
-        SET
-            finished_at = NOW(),
-            status = %s,
-            records_received = %s,
-            records_inserted = %s,
-            records_updated = %s,
-            records_failed = %s,
-            error_message = %s,
-            updated_at = NOW()
+        SET finished_at = NOW(), status = %s, records_received = %s, records_inserted = %s,
+            records_updated = %s, records_failed = %s, error_message = %s, updated_at = NOW()
         WHERE id = %s
         """,
-        (
-            status,
-            records_received,
-            records_inserted,
-            records_updated,
-            records_failed,
-            error_message,
-            ingestion_run_id,
-        ),
+        (status, records_received, records_inserted, records_updated, records_failed, error_message, ingestion_run_id),
     )
 
 
-def upsert_price_daily(cur, symbol_id: str, ingestion_run_id: str, trading_date: date, row: dict[str, Any]) -> None:
+def store_price_row(cur, *, symbol_id: str, data_source_id: str, ingestion_run_id: str, trading_date: date, row: dict[str, Any]) -> None:
     open_price = decimal_or_none(row.get("Open"))
     high_price = decimal_or_none(row.get("High"))
     low_price = decimal_or_none(row.get("Low"))
     close_price = decimal_or_none(row.get("Close"))
     adjusted_close = decimal_or_none(row.get("Adj Close"))
     volume = int_or_none(row.get("Volume"))
-
     price_change = None
     change_percent = None
     if open_price is not None and close_price is not None:
         price_change = close_price - open_price
         if open_price != 0:
             change_percent = (price_change / open_price) * Decimal("100")
+    turnover_value = close_price * Decimal(volume) if close_price is not None and volume is not None else None
 
-    turnover_value = None
-    if close_price is not None and volume is not None:
-        turnover_value = close_price * Decimal(volume)
-
-    cur.execute(
-        """
-        INSERT INTO price_daily (
-            symbol_id, trading_date, open_price, high_price, low_price, close_price,
-            adjusted_close, price_change, change_percent, volume, turnover_value,
-            ingestion_run_id, raw_payload
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
-        ON CONFLICT (symbol_id, trading_date) DO UPDATE
-        SET
-            open_price = EXCLUDED.open_price,
-            high_price = EXCLUDED.high_price,
-            low_price = EXCLUDED.low_price,
-            close_price = EXCLUDED.close_price,
-            adjusted_close = EXCLUDED.adjusted_close,
-            price_change = EXCLUDED.price_change,
-            change_percent = EXCLUDED.change_percent,
-            volume = EXCLUDED.volume,
-            turnover_value = EXCLUDED.turnover_value,
-            ingestion_run_id = EXCLUDED.ingestion_run_id,
-            raw_payload = EXCLUDED.raw_payload,
-            updated_at = NOW()
-        """,
-        (
-            symbol_id,
-            trading_date,
-            open_price,
-            high_price,
-            low_price,
-            close_price,
-            adjusted_close,
-            price_change,
-            change_percent,
-            volume,
-            turnover_value,
-            ingestion_run_id,
-            json.dumps(row, default=str, ensure_ascii=False),
-        ),
+    upsert_price_daily_raw(
+        cur,
+        symbol_id=symbol_id,
+        data_source_id=data_source_id,
+        ingestion_run_id=ingestion_run_id,
+        trading_date=trading_date,
+        open_price=open_price,
+        high_price=high_price,
+        low_price=low_price,
+        close_price=close_price,
+        adjusted_close=adjusted_close,
+        price_change=price_change,
+        change_percent=change_percent,
+        volume=volume,
+        turnover_value=turnover_value,
+        trade_count=None,
+        raw_payload=row,
     )
+    refresh_price_daily_canonical(cur, symbol_id=symbol_id, trading_date=trading_date)
 
 
 def load_latest_prices(tickers: tuple[str, ...] = DEFAULT_TICKERS) -> dict[str, Any]:
     summary: dict[str, Any] = {"processed": [], "failed": []}
-
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             data_source_id = ensure_data_source(cur)
             market_ids = {code: get_market_id(cur, code) for code in {infer_market_code(t) for t in tickers}}
-            ingestion_runs = {
-                code: create_ingestion_run(
-                    cur,
-                    data_source_id,
-                    market_ids[code],
-                    [ticker for ticker in tickers if infer_market_code(ticker) == code],
-                )
-                for code in market_ids
-            }
+            ingestion_runs = {code: create_ingestion_run(cur, data_source_id, market_ids[code], [ticker for ticker in tickers if infer_market_code(ticker) == code]) for code in market_ids}
             conn.commit()
-
         try:
             with conn.cursor() as cur:
                 for ticker in tickers:
-                    spec = TickerSpec(
-                        ticker=ticker,
-                        market_code=infer_market_code(ticker),
-                        instrument_type=infer_instrument_type(ticker),
-                    )
-
+                    spec = TickerSpec(ticker=ticker, market_code=infer_market_code(ticker), instrument_type=infer_instrument_type(ticker))
                     yf_ticker = yf.Ticker(ticker)
                     info = yf_ticker.info or {}
                     history = yf_ticker.history(period="5d", interval="1d", auto_adjust=False)
                     if history.empty:
                         raise ValueError(f"No history returned for {ticker}")
-
                     latest = history.tail(1)
                     trading_date = latest.index[0].date()
                     latest_row = latest.iloc[0].to_dict()
-
                     market_id = market_ids[spec.market_code]
                     ingestion_run_id = ingestion_runs[spec.market_code]
                     symbol_id = upsert_symbol(cur, market_id, spec, info)
-                    upsert_price_daily(cur, symbol_id, ingestion_run_id, trading_date, latest_row)
-
-                    summary["processed"].append(
-                        {
-                            "ticker": ticker,
-                            "market": spec.market_code,
-                            "trading_date": trading_date.isoformat(),
-                            "close": str(decimal_or_none(latest_row.get("Close"))),
-                        }
-                    )
-
+                    store_price_row(cur, symbol_id=symbol_id, data_source_id=data_source_id, ingestion_run_id=ingestion_run_id, trading_date=trading_date, row=latest_row)
+                    summary["processed"].append({"ticker": ticker, "market": spec.market_code, "trading_date": trading_date.isoformat(), "close": str(decimal_or_none(latest_row.get("Close")))})
                 for market_code, ingestion_run_id in ingestion_runs.items():
                     count = len([item for item in summary["processed"] if item["market"] == market_code])
-                    finalize_ingestion_run(
-                        cur,
-                        ingestion_run_id,
-                        status="success",
-                        records_received=count,
-                        records_inserted=count,
-                        records_updated=0,
-                        records_failed=0,
-                    )
+                    finalize_ingestion_run(cur, ingestion_run_id, status="success", records_received=count, records_inserted=count, records_updated=0, records_failed=0)
                 conn.commit()
         except Exception as exc:
             with conn.cursor() as cur:
                 for market_code, ingestion_run_id in ingestion_runs.items():
                     processed_count = len([item for item in summary["processed"] if item["market"] == market_code])
-                    failed_count = len([item for item in summary["failed"] if item.get("market") == market_code])
-                    finalize_ingestion_run(
-                        cur,
-                        ingestion_run_id,
-                        status="failed",
-                        records_received=processed_count + failed_count,
-                        records_inserted=processed_count,
-                        records_updated=0,
-                        records_failed=failed_count or 1,
-                        error_message=str(exc),
-                    )
+                    finalize_ingestion_run(cur, ingestion_run_id, status="failed", records_received=processed_count, records_inserted=processed_count, records_updated=0, records_failed=1, error_message=str(exc))
                 conn.commit()
             raise
-
     return summary
 
 
