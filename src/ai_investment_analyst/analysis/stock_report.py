@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from ai_investment_analyst.db.connection import get_connection
 
@@ -92,15 +92,30 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
     return StockReportContext(ticker=ticker, latest=latest, recent_prices=points, latest_revenue=latest_revenue)
 
 
+def _quantize_2(value: Decimal) -> Decimal:
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 def _pct_change(new: Decimal | None, old: Decimal | None) -> str:
     if new is None or old in (None, Decimal("0")):
         return "N/A"
     change = ((new - old) / old) * Decimal("100")
-    return f"{change:.2f}%"
+    return f"{_quantize_2(change)}%"
 
 
-def _fmt_decimal(value: Decimal | None) -> str:
-    return "N/A" if value is None else f"{value}"
+def _fmt_price(value: Decimal | None) -> str:
+    return "N/A" if value is None else f"{_quantize_2(value)}"
+
+
+def _fmt_percent(value: Decimal | None) -> str:
+    return "N/A" if value is None else f"{_quantize_2(value)}%"
+
+
+def _fmt_revenue_in_100m(value: Decimal | None) -> str:
+    if value is None:
+        return "N/A"
+    amount = value / Decimal("100000000")
+    return f"{_quantize_2(amount)} 億元"
 
 
 def _revenue_trend_text(revenue: RevenuePoint | None) -> str:
@@ -109,12 +124,12 @@ def _revenue_trend_text(revenue: RevenuePoint | None) -> str:
     mom = revenue.revenue_month_change_percent
     yoy = revenue.revenue_year_change_percent
     if mom is None and yoy is None:
-        return "月營收資料已取得，但尚無法計算月增率與年增率。"
+        return "月營收資料已取得，但目前還無法完整估算月增與年增。"
     if (mom is not None and mom > 0) and (yoy is not None and yoy > 0):
-        return "最新月營收呈現月增、年增，基本面動能偏正向。"
+        return "最新月營收同時呈現月增與年增，顯示基本面動能偏正向。"
     if (mom is not None and mom < 0) and (yoy is not None and yoy < 0):
-        return "最新月營收呈現月減、年減，需留意基本面動能轉弱。"
-    return "最新月營收變化方向分歧，建議搭配更多基本面資料一起判讀。"
+        return "最新月營收同時呈現月減與年減，基本面動能轉弱需特別留意。"
+    return "最新月營收的月增與年增方向不一致，建議搭配更多基本面資料一起判讀。"
 
 
 def generate_stock_report(ticker: str) -> str:
@@ -127,11 +142,13 @@ def generate_stock_report(ticker: str) -> str:
     previous_10 = context.recent_prices[9] if len(context.recent_prices) >= 10 else None
 
     report_lines = [
-        f"個股分析報告：{ticker}",
-        f"- 最新收盤：{latest.close_price}（{latest.trading_date}）",
-        f"- 採用來源：{latest.source_code}",
-        f"- 近 5 筆變化：{_pct_change(latest.close_price, previous_5.close_price if previous_5 else None)}",
-        f"- 近 10 筆變化：{_pct_change(latest.close_price, previous_10.close_price if previous_10 else None)}",
+        f"【個股分析報告】{ticker}",
+        "",
+        "一、價格概況",
+        f"- 最新收盤價：{_fmt_price(latest.close_price)}（{latest.trading_date}）",
+        f"- 採用資料來源：{latest.source_code}",
+        f"- 近 5 筆價格變化：{_pct_change(latest.close_price, previous_5.close_price if previous_5 else None)}",
+        f"- 近 10 筆價格變化：{_pct_change(latest.close_price, previous_10.close_price if previous_10 else None)}",
     ]
 
     if len(context.recent_prices) >= 3:
@@ -149,19 +166,22 @@ def generate_stock_report(ticker: str) -> str:
         revenue = context.latest_revenue
         report_lines.extend(
             [
+                "",
+                "二、月營收觀察",
                 f"- 最新月營收期間：{revenue.revenue_period}",
-                f"- 最新月營收：{_fmt_decimal(revenue.revenue)}",
-                f"- 月增率：{_fmt_decimal(revenue.revenue_month_change_percent)}%",
-                f"- 年增率：{_fmt_decimal(revenue.revenue_year_change_percent)}%",
+                f"- 最新月營收：{_fmt_revenue_in_100m(revenue.revenue)}",
+                f"- 月增率（MoM）：{_fmt_percent(revenue.revenue_month_change_percent)}",
+                f"- 年增率（YoY）：{_fmt_percent(revenue.revenue_year_change_percent)}",
                 f"- 營收趨勢判讀：{_revenue_trend_text(revenue)}",
             ]
         )
 
     report_lines.extend(
         [
-            "- 分析說明：",
-            "  目前這是第一版報告，主要根據 canonical 價格資料與最新月營收生成。",
-            "  後續可再加入財報、新聞與法人資料，讓報告更完整。",
+            "",
+            "三、結論",
+            "- 目前這是第一版個股分析報告，主要依據 canonical 價格資料與最新月營收生成。",
+            "- 若再加入財報、新聞與法人籌碼，報告的判讀深度會再提升一個層級。",
         ]
     )
     return "\n".join(report_lines)
