@@ -9,7 +9,8 @@ dependencies = [
   "python-dotenv>=1.0",
   "yfinance>=0.2.54",
   "pandas>=2.2",
-  "requests>=2.32"
+  "requests>=2.32",
+  "finlab>=1.5.3"
 ]
 
 [build-system]

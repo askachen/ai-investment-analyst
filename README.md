@@ -59,6 +59,20 @@ FINMIND_API_TOKEN=your_finmind_token
 - 批次寫入 `price_daily`
 - 記錄 `ingestion_runs`
 
+## FinLab 台股價格匯入
+目前已提供 FinLab Python SDK 示範匯入器，會讀取 `.env` 內的 `FINLAB_API_KEY`，使用 `data.get(...)` 抓取台股收盤價與成交股數，並將 `2330`、`2454` 最近 10 筆資料寫入 PostgreSQL。
+
+### `.env` 範例
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/investment
+FINLAB_API_KEY=your_finlab_api_key
+```
+
+### 使用方式
+1. 安裝套件：`pip install -e .`
+2. 確認 schema 已建立：`python scripts/apply_schema.py`
+3. 執行：`python scripts/load_finlab_price.py`
+
 ## Next Steps
 - 擴充更多台股/美股標的
 - 加入批次 ticker 管理
