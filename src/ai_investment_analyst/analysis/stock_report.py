@@ -14,21 +14,26 @@ class PricePoint:
 
 
 @dataclass(frozen=True)
+class RevenuePoint:
+    revenue_period: str
+    revenue: Decimal | None
+    revenue_month_change_percent: Decimal | None
+    revenue_year_change_percent: Decimal | None
+
+
+@dataclass(frozen=True)
 class StockReportContext:
     ticker: str
     latest: PricePoint | None
     recent_prices: list[PricePoint]
+    latest_revenue: RevenuePoint | None
 
 
 def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContext:
     with get_connection() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT
-                s.ticker,
-                pdc.trading_date,
-                pdc.close_price,
-                ds.code AS source_code
+            SELECT s.ticker, pdc.trading_date, pdc.close_price, ds.code AS source_code
             FROM price_daily_canonical pdc
             JOIN symbols s ON s.id = pdc.symbol_id
             JOIN data_sources ds ON ds.id = pdc.data_source_id
@@ -38,7 +43,20 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
             """,
             (ticker, limit),
         )
-        rows = cur.fetchall()
+        price_rows = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT mr.revenue_period, mr.revenue, mr.revenue_month_change_percent, mr.revenue_year_change_percent
+            FROM monthly_revenues mr
+            JOIN symbols s ON s.id = mr.symbol_id
+            WHERE s.ticker = %s
+            ORDER BY mr.revenue_period DESC
+            LIMIT 1
+            """,
+            (ticker,),
+        )
+        revenue_row = cur.fetchone()
 
     points = [
         PricePoint(
@@ -46,10 +64,18 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
             close_price=row[2],
             source_code=row[3],
         )
-        for row in rows
+        for row in price_rows
     ]
     latest = points[0] if points else None
-    return StockReportContext(ticker=ticker, latest=latest, recent_prices=points)
+    latest_revenue = None
+    if revenue_row:
+        latest_revenue = RevenuePoint(
+            revenue_period=revenue_row[0].isoformat(),
+            revenue=revenue_row[1],
+            revenue_month_change_percent=revenue_row[2],
+            revenue_year_change_percent=revenue_row[3],
+        )
+    return StockReportContext(ticker=ticker, latest=latest, recent_prices=points, latest_revenue=latest_revenue)
 
 
 def _pct_change(new: Decimal | None, old: Decimal | None) -> str:
@@ -57,6 +83,10 @@ def _pct_change(new: Decimal | None, old: Decimal | None) -> str:
         return "N/A"
     change = ((new - old) / old) * Decimal("100")
     return f"{change:.2f}%"
+
+
+def _fmt_decimal(value: Decimal | None) -> str:
+    return "N/A" if value is None else f"{value}"
 
 
 def generate_stock_report(ticker: str) -> str:
@@ -87,11 +117,22 @@ def generate_stock_report(ticker: str) -> str:
                 trend = "短線震盪"
             report_lines.append(f"- 近三日趨勢：{trend}")
 
+    if context.latest_revenue:
+        revenue = context.latest_revenue
+        report_lines.extend(
+            [
+                f"- 最新月營收期間：{revenue.revenue_period}",
+                f"- 最新月營收：{_fmt_decimal(revenue.revenue)}",
+                f"- 月增率：{_fmt_decimal(revenue.revenue_month_change_percent)}%",
+                f"- 年增率：{_fmt_decimal(revenue.revenue_year_change_percent)}%",
+            ]
+        )
+
     report_lines.extend(
         [
             "- 分析說明：",
-            "  目前這是第一版報告，主要根據 canonical 價格資料生成。",
-            "  後續可再加入月營收、財報、新聞與法人資料，讓報告更完整。",
+            "  目前這是第一版報告，主要根據 canonical 價格資料與最新月營收生成。",
+            "  後續可再加入財報、新聞與法人資料，讓報告更完整。",
         ]
     )
     return "\n".join(report_lines)
