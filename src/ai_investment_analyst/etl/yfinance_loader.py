@@ -13,7 +13,8 @@ from ai_investment_analyst.db.connection import get_connection
 
 DEFAULT_TICKERS: tuple[str, ...] = (
     "^TWII",   # 台股加權指數
-    "^GSPC",   # S&P 500
+    "^IXIC",   # 納斯達克綜合指數
+    "^DJI",    # 道瓊工業指數
     "2454.TW", # 聯發科
     "2330.TW", # 台積電
 )

@@ -21,7 +21,8 @@ AI Investment Analyst 是一個以 PostgreSQL + Python ETL 為核心的投資資
 ## YFinance 最新資料匯入
 目前已提供一支示範腳本，可用 `yfinance` 抓取以下標的的最新日線資料並寫入 PostgreSQL：
 - `^TWII`：台股加權指數
-- `^GSPC`：美股 S&P 500
+- `^IXIC`：納斯達克綜合指數
+- `^DJI`：道瓊工業指數
 - `2454.TW`：聯發科
 - `2330.TW`：台積電
 
