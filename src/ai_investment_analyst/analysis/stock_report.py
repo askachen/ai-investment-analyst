@@ -22,11 +22,20 @@ class RevenuePoint:
 
 
 @dataclass(frozen=True)
+class FinancialSummary:
+    report_date: str
+    revenue: Decimal | None
+    net_income: Decimal | None
+    eps: Decimal | None
+
+
+@dataclass(frozen=True)
 class StockReportContext:
     ticker: str
     latest: PricePoint | None
     recent_prices: list[PricePoint]
     latest_revenue: RevenuePoint | None
+    latest_financial_summary: FinancialSummary | None
 
 
 def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContext:
@@ -57,6 +66,18 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
             (ticker,),
         )
         revenue_rows = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT fsi.report_date, fsi.statement_type, fsi.item_name, fsi.item_value
+            FROM financial_statement_items fsi
+            JOIN symbols s ON s.id = fsi.symbol_id
+            WHERE s.ticker = %s
+            ORDER BY fsi.report_date DESC
+            """,
+            (ticker,),
+        )
+        financial_rows = cur.fetchall()
 
     points = [
         PricePoint(
@@ -89,7 +110,37 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
             revenue_year_change_percent=revenue_year_change_percent,
         )
 
-    return StockReportContext(ticker=ticker, latest=latest, recent_prices=points, latest_revenue=latest_revenue)
+    latest_financial_summary = None
+    if financial_rows:
+        latest_report_date = financial_rows[0][0]
+        latest_rows = [row for row in financial_rows if row[0] == latest_report_date]
+
+        revenue = None
+        net_income = None
+        eps = None
+        for _, statement_type, item_name, item_value in latest_rows:
+            normalized = (item_name or "").lower()
+            if revenue is None and ("營業收入" in item_name or "revenue" in normalized):
+                revenue = item_value
+            if net_income is None and ("本期淨利" in item_name or "本期稅後淨利" in item_name or "net income" in normalized):
+                net_income = item_value
+            if eps is None and ("每股盈餘" in item_name or "eps" in normalized):
+                eps = item_value
+
+        latest_financial_summary = FinancialSummary(
+            report_date=latest_report_date.isoformat(),
+            revenue=revenue,
+            net_income=net_income,
+            eps=eps,
+        )
+
+    return StockReportContext(
+        ticker=ticker,
+        latest=latest,
+        recent_prices=points,
+        latest_revenue=latest_revenue,
+        latest_financial_summary=latest_financial_summary,
+    )
 
 
 def _quantize_2(value: Decimal) -> Decimal:
@@ -130,6 +181,14 @@ def _revenue_trend_text(revenue: RevenuePoint | None) -> str:
     if (mom is not None and mom < 0) and (yoy is not None and yoy < 0):
         return "最新月營收同時呈現月減與年減，基本面動能轉弱需特別留意。"
     return "最新月營收的月增與年增方向不一致，建議搭配更多基本面資料一起判讀。"
+
+
+def _financial_summary_text(financial: FinancialSummary | None) -> str:
+    if not financial:
+        return "尚無可用的財報摘要資料。"
+    if financial.revenue is not None and financial.net_income is not None:
+        return "最新財報已可取得營收與淨利資料，可作為後續基本面判讀基礎。"
+    return "最新財報已匯入，但目前可辨識的關鍵欄位仍有限，後續可再細化映射規則。"
 
 
 def generate_stock_report(ticker: str) -> str:
@@ -176,12 +235,26 @@ def generate_stock_report(ticker: str) -> str:
             ]
         )
 
+    if context.latest_financial_summary:
+        financial = context.latest_financial_summary
+        report_lines.extend(
+            [
+                "",
+                "三、財報摘要",
+                f"- 最新財報日期：{financial.report_date}",
+                f"- 最新財報營收：{_fmt_revenue_in_100m(financial.revenue)}",
+                f"- 最新財報淨利：{_fmt_revenue_in_100m(financial.net_income)}",
+                f"- 每股盈餘（EPS）：{_fmt_price(financial.eps)}",
+                f"- 財報判讀：{_financial_summary_text(financial)}",
+            ]
+        )
+
     report_lines.extend(
         [
             "",
-            "三、結論",
-            "- 目前這是第一版個股分析報告，主要依據 canonical 價格資料與最新月營收生成。",
-            "- 若再加入財報、新聞與法人籌碼，報告的判讀深度會再提升一個層級。",
+            "四、結論",
+            "- 目前這是第一版個股分析報告，主要依據 canonical 價格資料、月營收與財報摘要生成。",
+            "- 若再加入新聞與法人籌碼，報告的判讀深度會再提升一個層級。",
         ]
     )
     return "\n".join(report_lines)
