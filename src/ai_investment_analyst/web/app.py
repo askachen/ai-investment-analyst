@@ -10,7 +10,9 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+import yfinance as yf
 
+from ai_investment_analyst.analysis.stock_report import candidate_market_tickers
 from ai_investment_analyst.analysis.stock_report import generate_stock_report
 
 app = FastAPI(title="AI Investment Analyst")
@@ -31,9 +33,9 @@ class ReportResponse(BaseModel):
     generated_at: str
 
 
-def render_report_html(report: str) -> str:
+def render_report_html(report: str, display_title: str | None = None) -> str:
     lines = [line.strip() for line in report.splitlines()]
-    title = 'AI 投資分析師報告'
+    title = display_title or 'AI 投資分析師報告'
     badges: list[str] = []
     sections: list[tuple[str, list[str]]] = []
     known_headings = {
@@ -70,7 +72,8 @@ def render_report_html(report: str) -> str:
         if not line:
             continue
         if line.startswith('【個股分析報告】'):
-            title = line.removeprefix('【個股分析報告】').strip() or title
+            if display_title is None:
+                title = line.removeprefix('【個股分析報告】').strip() or title
             continue
         if line.startswith('投資評級：'):
             badges.append(f'<span class="badge badge-rating">{escape(line)}</span>')
@@ -106,6 +109,19 @@ def render_report_html(report: str) -> str:
 
     body_parts.append('</article>')
     return ''.join(body_parts)
+
+
+def resolve_stock_name(ticker: str) -> str | None:
+    for candidate in candidate_market_tickers(ticker):
+        try:
+            info = yf.Ticker(candidate).info or {}
+        except Exception:
+            continue
+        for key in ('shortName', 'longName', 'displayName'):
+            value = (info.get(key) or '').strip()
+            if value:
+                return value
+    return None
 
 
 def get_web_login_password() -> str:
@@ -191,11 +207,13 @@ def create_report(payload: ReportRequest, request: Request):
     if not ticker:
         raise HTTPException(status_code=422, detail='ticker is required')
     report = generate_stock_report(ticker)
+    stock_name = resolve_stock_name(ticker)
+    display_title = f'{ticker} {stock_name}' if stock_name else ticker
     mode = 'deterministic'
     return ReportResponse(
         ticker=ticker,
         report=report,
-        report_html=render_report_html(report),
+        report_html=render_report_html(report, display_title=display_title),
         mode=mode,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )

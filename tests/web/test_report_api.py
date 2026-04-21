@@ -8,14 +8,19 @@ def test_report_api_returns_report(monkeypatch):
         'ai_investment_analyst.web.app.generate_stock_report',
         lambda ticker: 'mock report for ' + ticker,
     )
+    monkeypatch.setattr(
+        'ai_investment_analyst.web.app.resolve_stock_name',
+        lambda ticker: '聯發科' if ticker == '2454' else None,
+    )
     client = TestClient(app)
-    response = client.post('/api/report', json={'ticker': '2330'})
+    response = client.post('/api/report', json={'ticker': '2454'})
     assert response.status_code == 200
     payload = response.json()
-    assert payload['ticker'] == '2330'
-    assert payload['report'] == 'mock report for 2330'
+    assert payload['ticker'] == '2454'
+    assert payload['report'] == 'mock report for 2454'
     assert payload['report_html'].startswith('<article')
-    assert '<p>mock report for 2330</p>' in payload['report_html']
+    assert '<h1>2454 聯發科</h1>' in payload['report_html']
+    assert '<p>mock report for 2454</p>' in payload['report_html']
     assert payload['mode'] in {'llm', 'fallback', 'deterministic'}
 
 

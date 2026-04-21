@@ -45,3 +45,16 @@ Bear Case
     assert '<h2>Base Case</h2>' in html
     assert '<h2>Bear Case</h2>' in html
     assert '<h2>結論</h2>' in html
+
+
+def test_render_report_html_uses_stock_name_in_title():
+    report = """【個股分析報告】2454 聯發科
+投資評級：偏多
+信心等級：中
+
+結論
+中長線趨勢正向。"""
+
+    html = render_report_html(report)
+
+    assert '<h1>2454 聯發科</h1>' in html
