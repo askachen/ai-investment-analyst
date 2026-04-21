@@ -112,7 +112,12 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
 
 
 def resolve_stock_name(ticker: str) -> str | None:
-    for candidate in candidate_market_tickers(ticker):
+    candidates = candidate_market_tickers(ticker)
+    if ticker.isdigit():
+        tw_symbol = f'{ticker}.TW'
+        if tw_symbol in candidates:
+            candidates = [tw_symbol] + [candidate for candidate in candidates if candidate != tw_symbol]
+    for candidate in candidates:
         try:
             info = yf.Ticker(candidate).info or {}
         except Exception:
