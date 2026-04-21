@@ -73,7 +73,58 @@ FINLAB_API_KEY=your_finlab_api_key
 2. 確認 schema 已建立：`python scripts/apply_schema.py`
 3. 執行：`python scripts/load_finlab_price.py`
 
+## 分析師風格個股報告
+
+目前已提供分析師風格報告生成器，會整合：
+- canonical 價格資料（若 PostgreSQL 可用）
+- 月營收與財報摘要（若資料庫已有資料）
+- `yfinance` 新聞
+- Gemini（若 `.env` 已設定 `GEMINI_API_KEY`）
+
+### 報告生成使用方式
+1. 安裝套件：`uv pip install -e .` 或 `pip install -e .`
+2. 如要使用資料庫資料，設定 `.env` 中的 `DATABASE_URL`
+3. 如要使用 Gemini，設定 `.env` 中的 `GEMINI_API_KEY`
+4. 執行：`python scripts/generate_stock_report.py 2330`
+
+### 行為說明
+- **優先使用資料庫**：若 PostgreSQL 可連線，會優先讀 canonical 價格、月營收、財報摘要。
+- **DB 不可用時 fallback**：若資料庫無法連線，會自動改用 `yfinance` 即時價格與公開資訊生成報告。
+- **LLM 可選**：若有 `GEMINI_API_KEY`，會優先呼叫 Gemini 生成更像真人分析師的敘事；若失敗則自動退回 deterministic fallback 報告。
+- **台股代號容錯**：像 `2330` 這類純數字 ticker，live fallback 會自動嘗試 `2330.TW`。
+
+## 網站版（Railway 部署）
+
+目前已加入網站版 MVP，可讓一般使用者直接在網頁輸入股票代號取得分析報告。
+
+### 本機啟動
+```bash
+uv pip install -e .
+uvicorn ai_investment_analyst.web.app:app --host 0.0.0.0 --port 8000
+```
+
+開啟：`http://localhost:8000`
+
+### 可用端點
+- `GET /health`
+- `GET /`
+- `POST /api/report`
+
+### Railway 部署
+1. 將 repo push 到 GitHub
+2. 在 Railway 建立新 project 並連接 GitHub repo
+3. 設定環境變數：
+   - `GEMINI_API_KEY`
+   - `DATABASE_URL`（可選）
+   - `FINMIND_API_TOKEN`（可選）
+   - `FINLAB_API_KEY`（可選）
+4. Railway 會讀取 `Procfile` 啟動服務
+
+### 免責聲明
+本內容僅供參考，不構成投資建議。
+
 ## Next Steps
 - 擴充更多台股/美股標的
 - 加入批次 ticker 管理
 - 實作更多資料來源匯入器
+- 納入法人籌碼、估值與歷史新聞摘要，提升報告深度

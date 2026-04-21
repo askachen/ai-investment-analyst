@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 投資分析師</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 16px; line-height: 1.6; }
+      input, button, textarea { font-size: 16px; }
+      input { padding: 10px; width: 220px; }
+      button { padding: 10px 14px; }
+      pre { white-space: pre-wrap; background: #f6f6f6; padding: 16px; border-radius: 8px; }
+      .muted { color: #666; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <h1>AI 投資分析師</h1>
+    <p>輸入股票代號，例如 2330、TSM、AAPL。</p>
+    <form id="report-form">
+      <input type="text" name="ticker" id="ticker" placeholder="請輸入股票代號" value="{{ ticker }}" />
+      <button type="submit">開始分析</button>
+    </form>
+    <p class="muted">本內容僅供參考，不構成投資建議。</p>
+    <pre id="result">{% if result %}{{ result }}{% else %}尚未產生報告{% endif %}</pre>
+    <script>
+      const form = document.getElementById('report-form');
+      const result = document.getElementById('result');
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const ticker = document.getElementById('ticker').value;
+        result.textContent = '分析中，請稍候...';
+        const response = await fetch('/api/report', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ticker})
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          result.textContent = payload.detail || '產生報告時發生錯誤';
+          return;
+        }
+        result.textContent = payload.report;
+      });
+    </script>
+  </body>
+</html>
