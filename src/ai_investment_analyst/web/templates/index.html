@@ -48,7 +48,7 @@
   <body>
     <section class="hero">
       <h1>AI 投資分析師</h1>
-      <p>輸入股票代號，例如 2330、TSM、AAPL，快速取得較接近台灣分析師口吻的個股分析。</p>
+      <p>輸入股票代號，例如 2330、TSM、AAPL。</p>
     </section>
     <section class="panel">
       <form id="report-form">
@@ -65,21 +65,29 @@
     <script>
       const form = document.getElementById('report-form');
       const result = document.getElementById('result-html');
+      const submitButton = form.querySelector('button[type="submit"]');
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const ticker = document.getElementById('ticker').value;
+        submitButton.disabled = true;
+        submitButton.textContent = '分析中...';
         result.innerHTML = '<div class="placeholder">分析中，請稍候...</div>';
-        const response = await fetch('/api/report', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ticker})
-        });
-        const payload = await response.json();
-        if (!response.ok) {
-          result.innerHTML = `<div class="placeholder">${payload.detail || '產生報告時發生錯誤'}</div>`;
-          return;
+        try {
+          const response = await fetch('/api/report', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ticker})
+          });
+          const payload = await response.json();
+          if (!response.ok) {
+            result.innerHTML = `<div class="placeholder">${payload.detail || '產生報告時發生錯誤'}</div>`;
+            return;
+          }
+          result.innerHTML = payload.report_html;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = '開始分析';
         }
-        result.innerHTML = payload.report_html;
       });
     </script>
   </body>
