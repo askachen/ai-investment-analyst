@@ -115,10 +115,15 @@ uvicorn ai_investment_analyst.web.app:app --host 0.0.0.0 --port 8000
 2. 在 Railway 建立新 project 並連接 GitHub repo
 3. 設定環境變數：
    - `GEMINI_API_KEY`
+   - `WEB_LOGIN_PASSWORD`（建議設定，啟用網站登入保護）
    - `DATABASE_URL`（可選）
    - `FINMIND_API_TOKEN`（可選）
    - `FINLAB_API_KEY`（可選）
 4. Railway 會讀取 `Procfile` 啟動服務
+
+### 網站登入保護
+- 若未設定 `WEB_LOGIN_PASSWORD`，網站會維持公開可用。
+- 若設定了 `WEB_LOGIN_PASSWORD`，使用者必須先經過 `/login` 輸入密碼，才能進入首頁與使用 `POST /api/report`。
 
 ### 免責聲明
 本內容僅供參考，不構成投資建議。

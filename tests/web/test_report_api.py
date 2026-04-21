@@ -14,6 +14,8 @@ def test_report_api_returns_report(monkeypatch):
     payload = response.json()
     assert payload['ticker'] == '2330'
     assert payload['report'] == 'mock report for 2330'
+    assert payload['report_html'].startswith('<article')
+    assert '<p>mock report for 2330</p>' in payload['report_html']
     assert payload['mode'] in {'llm', 'fallback', 'deterministic'}
 
 
