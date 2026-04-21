@@ -44,5 +44,23 @@ def test_resolve_stock_name_prefers_tw_suffix_for_numeric_tickers(monkeypatch):
             return {}
 
     monkeypatch.setattr('ai_investment_analyst.web.app.yf.Ticker', FakeTicker)
+    monkeypatch.setattr('ai_investment_analyst.web.app.lookup_taiwan_stock_name', lambda ticker: None)
+
+    assert resolve_stock_name('2454') == '聯發科'
+
+
+def test_resolve_stock_name_prefers_traditional_chinese_taiwan_name(monkeypatch):
+    class FakeTicker:
+        def __init__(self, symbol):
+            self.symbol = symbol
+
+        @property
+        def info(self):
+            if self.symbol == '2454.TW':
+                return {'shortName': 'MEDIATEK INC', 'longName': 'MediaTek Inc.'}
+            return {}
+
+    monkeypatch.setattr('ai_investment_analyst.web.app.yf.Ticker', FakeTicker)
+    monkeypatch.setattr('ai_investment_analyst.web.app.lookup_taiwan_stock_name', lambda ticker: '聯發科')
 
     assert resolve_stock_name('2454') == '聯發科'

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from html import escape
 import os
 from secrets import compare_digest
@@ -10,6 +11,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+import requests
 import yfinance as yf
 
 from ai_investment_analyst.analysis.stock_report import candidate_market_tickers
@@ -19,6 +21,8 @@ app = FastAPI(title="AI Investment Analyst")
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 SESSION_COOKIE_NAME = 'session'
 SESSION_COOKIE_VALUE = 'authenticated'
+TWSE_NAME_URL = 'https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=json'
+TPEX_NAME_URL = 'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes'
 
 
 class ReportRequest(BaseModel):
@@ -112,6 +116,10 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
 
 
 def resolve_stock_name(ticker: str) -> str | None:
+    if ticker.isdigit():
+        chinese_name = lookup_taiwan_stock_name(ticker)
+        if chinese_name:
+            return chinese_name
     candidates = candidate_market_tickers(ticker)
     if ticker.isdigit():
         tw_symbol = f'{ticker}.TW'
@@ -127,6 +135,39 @@ def resolve_stock_name(ticker: str) -> str | None:
             if value:
                 return value
     return None
+
+
+@lru_cache(maxsize=1)
+def _load_taiwan_stock_name_map() -> dict[str, str]:
+    mapping: dict[str, str] = {}
+
+    try:
+        response = requests.get(TWSE_NAME_URL, timeout=20)
+        response.raise_for_status()
+        payload = response.json()
+        for code, name, *_ in payload.get('data', []):
+            if code and name:
+                mapping[str(code).strip()] = str(name).strip()
+    except Exception:
+        pass
+
+    try:
+        response = requests.get(TPEX_NAME_URL, timeout=20)
+        response.raise_for_status()
+        payload = response.json()
+        for row in payload:
+            code = str(row.get('SecuritiesCompanyCode') or '').strip()
+            name = str(row.get('CompanyName') or '').strip()
+            if code and name:
+                mapping[code] = name
+    except Exception:
+        pass
+
+    return mapping
+
+
+def lookup_taiwan_stock_name(ticker: str) -> str | None:
+    return _load_taiwan_stock_name_map().get(ticker)
 
 
 def get_web_login_password() -> str:
