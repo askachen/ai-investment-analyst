@@ -52,15 +52,21 @@ class StockReportContext:
 class ReportFacts:
     rating: str
     confidence: str
+    thesis: str
     summary: str
     key_points: list[str]
+    financial_snapshot: list[str]
     price_observation: str
     fundamental_observation: str
     valuation_observation: str
     valuation_label: str
     valuation_range: str
+    target_price_summary: str
     news_observation: str
     risk_flags: list[str]
+    bull_case: list[str]
+    base_case: list[str]
+    bear_case: list[str]
     conclusion: str
 
 
@@ -272,15 +278,21 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
         return ReportFacts(
             rating="中立",
             confidence="低",
+            thesis="資料不足，暫時無法建立明確投資主軸。",
             summary="目前缺少有效價格資料，無法形成可靠判讀。",
             key_points=["尚未取得 canonical 價格資料"],
+            financial_snapshot=["營收：N/A", "EPS：N/A", "淨利：N/A"],
             price_observation="價格資料不足。",
             fundamental_observation="基本面資料不足。",
             valuation_observation="估值資料不足。",
             valuation_label="合理",
             valuation_range="合理價區間：資料不足。",
+            target_price_summary="目標價：資料不足。",
             news_observation=_news_observation(news_items),
             risk_flags=["資料完整度不足可能導致誤判"],
+            bull_case=["缺乏足夠資料，無法建立 Bull Case。"],
+            base_case=["待資料補齊後再建構 Base Case。"],
+            bear_case=["資料不足本身即為主要風險。"],
             conclusion="待資料補齊後再進行分析。",
         )
 
@@ -356,7 +368,38 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
         if lower_bound is not None and upper_bound is not None
         else "合理價區間：資料不足。"
     )
+    base_eps = context.latest_financial_summary.eps if context.latest_financial_summary and context.latest_financial_summary.eps is not None else None
+    target_price = base_eps * Decimal('22') if base_eps is not None else None
+    thesis = (
+        f"AI 與高效能運算需求延續，基本面仍具支撐，但目前評價{valuation_label}，操作上宜留意切入節奏。"
+        if rating != "偏空"
+        else "需求與價格動能轉弱，現階段投資主軸偏向風險控管與等待基本面止穩。"
+    )
+    financial_snapshot = [
+        f"營收：{_fmt_revenue_in_100m(context.latest_financial_summary.revenue) if context.latest_financial_summary else 'N/A'}",
+        f"淨利：{_fmt_revenue_in_100m(context.latest_financial_summary.net_income) if context.latest_financial_summary else 'N/A'}",
+        f"EPS：{_fmt_price(context.latest_financial_summary.eps) if context.latest_financial_summary else 'N/A'}",
+        f"月營收 YoY：{_fmt_percent(context.latest_revenue.revenue_year_change_percent) if context.latest_revenue else 'N/A'}",
+        f"月營收 MoM：{_fmt_percent(context.latest_revenue.revenue_month_change_percent) if context.latest_revenue else 'N/A'}",
+    ]
+    target_price_summary = (
+        f"以 Base Case {_fmt_price(base_eps)} 元 EPS 與 22 倍本益比推估，目標價約 {_fmt_price(target_price)} 元；若市場願意給到 25 倍，Bull Case 可上看 {_fmt_price(base_eps * Decimal('25'))} 元。"
+        if base_eps is not None
+        else "目標價：缺乏足夠 EPS 資料，暫時無法推導。"
+    )
     news_observation = _news_observation(news_items)
+    bull_case = [
+        "AI 需求與先進製程報價同步上行，帶動獲利優於市場預期。",
+        "法人持續上修資本支出效率與中長期成長能見度。",
+    ]
+    base_case = [
+        "主要客戶需求維持穩健，營收與獲利大致符合目前市場共識。",
+        f"評價維持在{valuation_label}附近，股價以基本面消化為主。",
+    ]
+    bear_case = [
+        "終端需求或雲端資本支出放緩，導致營收與毛利率低於預期。",
+        "若市場風險偏好下降，高評價族群可能面臨本益比修正。",
+    ]
     conclusion = (
         f"短線評價{valuation_label}，現階段宜等待營運動能或新催化進一步確認；若 AI 需求延續，中期基本面仍具支撐。"
         if rating == "中立"
@@ -368,15 +411,21 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
     return ReportFacts(
         rating=rating,
         confidence=_confidence_from_data(context),
+        thesis=thesis,
         summary=summary,
         key_points=key_points,
+        financial_snapshot=financial_snapshot,
         price_observation=price_observation,
         fundamental_observation=fundamental_observation,
         valuation_observation=valuation_observation,
         valuation_label=valuation_label,
         valuation_range=valuation_range,
+        target_price_summary=target_price_summary,
         news_observation=news_observation,
         risk_flags=risk_flags,
+        bull_case=bull_case,
+        base_case=base_case,
+        bear_case=bear_case,
         conclusion=conclusion,
     )
 
@@ -391,11 +440,17 @@ def render_fallback_report(ticker: str, facts: ReportFacts, news_items: list[New
         f"投資評級：{facts.rating}",
         f"信心等級：{facts.confidence}",
         "",
+        "一句話投資主軸",
+        facts.thesis,
+        "",
         "重點摘要",
         facts.summary,
         "",
         "重點摘要（條列）",
         *[f"- {point}" for point in facts.key_points],
+        "",
+        "財務摘要表",
+        *[f"- {item}" for item in facts.financial_snapshot],
         "",
         "價格與技術面觀察",
         facts.price_observation,
@@ -407,6 +462,9 @@ def render_fallback_report(ticker: str, facts: ReportFacts, news_items: list[New
         facts.valuation_observation,
         f"評價標籤：{facts.valuation_label}",
         facts.valuation_range,
+        "",
+        "目標價推導",
+        facts.target_price_summary,
         "",
         "新聞與市場催化",
         facts.news_observation,
@@ -428,6 +486,15 @@ def render_fallback_report(ticker: str, facts: ReportFacts, news_items: list[New
         "",
         "投資建議",
         f"- 對中長線投資人而言，現階段宜以分批布局 / 逢回觀察的節奏應對，而非追價。" if facts.rating != "偏空" else "- 建議先觀望，等待基本面與價格訊號重新同步。",
+        "",
+        "Bull Case",
+        *[f"- {item}" for item in facts.bull_case],
+        "",
+        "Base Case",
+        *[f"- {item}" for item in facts.base_case],
+        "",
+        "Bear Case",
+        *[f"- {item}" for item in facts.bear_case],
         "",
         "結論",
         facts.conclusion,

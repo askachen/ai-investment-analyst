@@ -35,16 +35,19 @@ def build_gemini_prompt(ticker: str, facts: Any, news_items: list[NewsItem]) -> 
                 [
                     f"投資評級：{facts.rating}",
                     f"信心等級：{facts.confidence}",
+                    f"一句話投資主軸：{facts.thesis}",
                     f"重點摘要：{facts.summary}",
                     f"價格觀察：{facts.price_observation}",
                     f"基本面觀察：{facts.fundamental_observation}",
                     f"估值觀察：{facts.valuation_observation}",
                     f"評價標籤：{facts.valuation_label}",
                     f"合理價區間：{facts.valuation_range}",
+                    f"目標價推導：{facts.target_price_summary}",
                     f"新聞觀察：{facts.news_observation}",
                     f"結論：{facts.conclusion}",
                 ]
                 + [f"重點：{point}" for point in facts.key_points]
+                + [f"財務摘要：{item}" for item in facts.financial_snapshot]
                 + [f"風險：{risk}" for risk in facts.risk_flags],
             ),
             _render_prompt_section("近期新聞", news_lines),

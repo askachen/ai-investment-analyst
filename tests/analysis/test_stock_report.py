@@ -72,3 +72,21 @@ def test_generate_stock_report_includes_analyst_sections():
     assert "結論" in report
     assert "分析師觀點" in report
     assert "投資建議" in report
+    assert "一句話投資主軸" in report
+    assert "財務摘要表" in report
+    assert "目標價推導" in report
+    assert "Bull Case" in report
+    assert "Base Case" in report
+    assert "Bear Case" in report
+
+
+def test_build_report_facts_produces_financial_snapshot_and_scenarios():
+    facts = build_report_facts(make_context())
+
+    assert "營收" in facts.financial_snapshot[0]
+    assert "EPS" in " ".join(facts.financial_snapshot)
+    assert "目標價" in facts.target_price_summary
+    assert "AI" in facts.thesis
+    assert facts.bull_case
+    assert facts.base_case
+    assert facts.bear_case

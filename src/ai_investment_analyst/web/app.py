@@ -37,11 +37,14 @@ def render_report_html(report: str) -> str:
     badges: list[str] = []
     sections: list[tuple[str, list[str]]] = []
     known_headings = {
+        '一句話投資主軸',
         '重點摘要',
         '重點摘要（條列）',
+        '財務摘要表',
         '價格與技術面觀察',
         '基本面觀察',
         '估值觀察',
+        '目標價推導',
         '新聞與市場催化',
         '利多催化',
         '中性觀察',
@@ -49,6 +52,9 @@ def render_report_html(report: str) -> str:
         '分析師觀點',
         '風險提示',
         '投資建議',
+        'Bull Case',
+        'Base Case',
+        'Bear Case',
         '結論',
     }
     current_heading = '內容摘要'
