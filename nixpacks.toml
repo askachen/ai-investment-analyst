@@ -5,4 +5,4 @@ nixPkgs = ["python311", "gcc"]
 cmds = ["python -m pip install --upgrade pip", "python -m pip install -r requirements.txt"]
 
 [start]
-cmd = "python -m uvicorn ai_investment_analyst.web.app:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "PYTHONPATH=src python -m uvicorn ai_investment_analyst.web.app:app --host 0.0.0.0 --port ${PORT:-8000}"
