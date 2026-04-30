@@ -42,6 +42,37 @@ def make_context() -> StockReportContext:
     )
 
 
+def make_soft_context() -> StockReportContext:
+    return StockReportContext(
+        ticker="1101",
+        latest=PricePoint(trading_date="2026-04-21", close_price=Decimal("42"), source_code="yfinance"),
+        recent_prices=[
+            PricePoint(trading_date="2026-04-21", close_price=Decimal("42"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-20", close_price=Decimal("42.5"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-17", close_price=Decimal("43"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-16", close_price=Decimal("43.2"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-15", close_price=Decimal("43.5"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-14", close_price=Decimal("44"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-13", close_price=Decimal("44.5"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-10", close_price=Decimal("45"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-09", close_price=Decimal("45.5"), source_code="yfinance"),
+            PricePoint(trading_date="2026-04-08", close_price=Decimal("46"), source_code="yfinance"),
+        ],
+        latest_revenue=RevenuePoint(
+            revenue_period="2026-03-01",
+            revenue=Decimal("12000000000"),
+            revenue_month_change_percent=Decimal("-1.2"),
+            revenue_year_change_percent=Decimal("3.1"),
+        ),
+        latest_financial_summary=FinancialSummary(
+            report_date="2025-12-31",
+            revenue=Decimal("48000000000"),
+            net_income=Decimal("3500000000"),
+            eps=Decimal("2.1"),
+        ),
+    )
+
+
 def test_generate_stock_report_includes_analyst_sections():
     facts = build_report_facts(make_context())
     news_items = [
@@ -86,7 +117,19 @@ def test_build_report_facts_produces_financial_snapshot_and_scenarios():
     assert "營收" in facts.financial_snapshot[0]
     assert "EPS" in " ".join(facts.financial_snapshot)
     assert "目標價" in facts.target_price_summary
-    assert "AI" in facts.thesis
+    assert "月營收" in facts.thesis
+    assert "偏高" in facts.thesis
     assert facts.bull_case
     assert facts.base_case
     assert facts.bear_case
+
+
+def test_build_report_facts_generates_ticker_specific_thesis_from_context():
+    semiconductor_facts = build_report_facts(make_context())
+    cyclical_facts = build_report_facts(make_soft_context())
+
+    assert semiconductor_facts.thesis != cyclical_facts.thesis
+    assert "月營收" in semiconductor_facts.thesis
+    assert "短線" in cyclical_facts.thesis
+    assert "偏高" in semiconductor_facts.thesis
+    assert "合理" in cyclical_facts.thesis

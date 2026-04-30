@@ -370,11 +370,27 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
     )
     base_eps = context.latest_financial_summary.eps if context.latest_financial_summary and context.latest_financial_summary.eps is not None else None
     target_price = base_eps * Decimal('22') if base_eps is not None else None
-    thesis = (
-        f"AI 與高效能運算需求延續，基本面仍具支撐，但目前評價{valuation_label}，操作上宜留意切入節奏。"
-        if rating != "偏空"
-        else "需求與價格動能轉弱，現階段投資主軸偏向風險控管與等待基本面止穩。"
-    )
+    trend_label = _trend_label(context.recent_prices)
+    revenue_yoy = context.latest_revenue.revenue_year_change_percent if context.latest_revenue else None
+    revenue_mom = context.latest_revenue.revenue_month_change_percent if context.latest_revenue else None
+    thesis_bits: list[str] = []
+    if rating == "偏空":
+        thesis = "需求與價格動能轉弱，現階段投資主軸偏向風險控管與等待基本面止穩。"
+    else:
+        if revenue_yoy is not None and revenue_yoy > 0:
+            thesis_bits.append(f"月營收年增 {_fmt_percent(revenue_yoy)} 顯示基本面仍有支撐")
+        elif revenue_yoy is not None and revenue_yoy < 0:
+            thesis_bits.append(f"月營收年減 {_fmt_percent(abs(revenue_yoy))} 反映需求修正壓力")
+        else:
+            thesis_bits.append("基本面仍待更多營收與財報資料確認")
+
+        if revenue_mom is not None and revenue_mom < 0:
+            thesis_bits.append(f"但月增 {_fmt_percent(revenue_mom)} 顯示短期拉貨力道放緩")
+        if trend_label != "資料不足":
+            thesis_bits.append(f"短線走勢呈現{trend_label}")
+
+        thesis_bits.append(f"目前評價{valuation_label}，操作上宜留意切入節奏")
+        thesis = "，".join(thesis_bits) + "。"
     financial_snapshot = [
         f"營收：{_fmt_revenue_in_100m(context.latest_financial_summary.revenue) if context.latest_financial_summary else 'N/A'}",
         f"淨利：{_fmt_revenue_in_100m(context.latest_financial_summary.net_income) if context.latest_financial_summary else 'N/A'}",
