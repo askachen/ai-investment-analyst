@@ -29,6 +29,11 @@ def test_index_page_contains_form():
     assert 'score-badge' in response.text
     assert 'score-details' in response.text
     assert 'factor-explainer' in response.text
+    assert 'stock-primary-name' in response.text
+    assert 'stock-secondary-code' in response.text
+    assert 'summary-grid' in response.text
+    assert 'summary-card' in response.text
+    assert 'detail-section' in response.text
     assert 'action="/logout"' not in response.text
     assert "fetch('/api/screener/latest')" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
