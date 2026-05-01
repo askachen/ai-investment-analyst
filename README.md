@@ -87,6 +87,24 @@ FINLAB_API_KEY=your_finlab_api_key
 3. 如要使用 Gemini，設定 `.env` 中的 `GEMINI_API_KEY`
 4. 執行：`python scripts/generate_stock_report.py 2330`
 
+### Screener 使用方式
+可直接用 CLI 對一組股票做可解釋排序：
+
+```bash
+python scripts/run_stock_screener.py 2330 2454 1101
+```
+
+也可加入簡單門檻：
+
+```bash
+python scripts/run_stock_screener.py --min-revenue-yoy 5 --min-eps 1 --max-pe 25 --min-average-volume-5d 10000000 2330 2454 1101
+```
+
+### Screener 行為說明
+- **優先使用資料庫**：若 PostgreSQL 可連線，會優先讀 canonical 價格、月營收、財報摘要。
+- **DB 不可用時 fallback**：若資料庫無法連線，會自動改用 `yfinance` 即時價格與公開資訊繼續評分。
+- **Explainable ranking**：目前分數由動能、營收、品質、估值、流動性五個因子組成，並輸出每檔股票的理由摘要。
+
 ### 行為說明
 - **優先使用資料庫**：若 PostgreSQL 可連線，會優先讀 canonical 價格、月營收、財報摘要。
 - **DB 不可用時 fallback**：若資料庫無法連線，會自動改用 `yfinance` 即時價格與公開資訊生成報告。
