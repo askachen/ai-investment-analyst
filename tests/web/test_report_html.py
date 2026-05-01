@@ -136,3 +136,29 @@ Bear Case
     assert 'AI 資本支出續強，推升產能利用率。' in html
     assert '高速運算需求延續，獲利穩步成長。' in html
     assert '終端需求放緩，評價面臨修正。' in html
+
+
+def test_render_report_html_builds_observation_radar_for_catalysts_and_risks():
+    report = """【個股分析報告】3017 奇鋐
+投資評級：買進
+信心等級：中高
+
+利多催化
+- GB200 水冷模組出貨升溫。
+
+中性觀察
+- 客戶拉貨節奏仍需持續追蹤。
+
+潛在風險
+- 高階散熱市場競爭升溫。"""
+
+    html = render_report_html(report)
+
+    assert '<section class="observation-radar" aria-label="投資觀察雷達">' in html
+    assert '<div class="observation-radar-title">投資觀察雷達</div>' in html
+    assert '<article class="observation-card observation-card-bull">' in html
+    assert '<article class="observation-card observation-card-neutral">' in html
+    assert '<article class="observation-card observation-card-bear">' in html
+    assert 'GB200 水冷模組出貨升溫。' in html
+    assert '客戶拉貨節奏仍需持續追蹤。' in html
+    assert '高階散熱市場競爭升溫。' in html

@@ -135,6 +135,12 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
 
     insight_cards: list[tuple[str, str]] = []
     scenario_sections: list[tuple[str, list[str], list[str]]] = []
+    observation_sections: list[tuple[str, str, list[str], list[str]]] = []
+    observation_tones = {
+        '利多催化': 'bull',
+        '中性觀察': 'neutral',
+        '潛在風險': 'bear',
+    }
     for heading, items in sections:
         paragraph_items = [item for item in items if not item.startswith('- ')]
         bullet_items = [item[2:] for item in items if item.startswith('- ')]
@@ -150,6 +156,8 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
             insight_cards.append(('目標價推導', paragraph_items[0]))
         elif heading in {'Bull Case', 'Base Case', 'Bear Case'}:
             scenario_sections.append((heading, bullet_items, paragraph_items))
+        elif heading in observation_tones and (bullet_items or paragraph_items):
+            observation_sections.append((heading, observation_tones[heading], bullet_items, paragraph_items))
 
     def _extract_financial_snapshot_cards(items: list[str]) -> list[tuple[str, str]]:
         cards: list[tuple[str, str]] = []
@@ -182,6 +190,20 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         body_parts.append('</article>')
         return ''.join(body_parts)
 
+    def _render_observation_card(heading: str, tone: str, bullet_items: list[str], paragraph_items: list[str]) -> str:
+        body_parts = [
+            f'<article class="observation-card observation-card-{tone}"><div class="observation-card-label">{escape(display_heading(heading))}</div>'
+        ]
+        for paragraph in paragraph_items:
+            body_parts.append(f'<p>{escape(paragraph)}</p>')
+        if bullet_items:
+            body_parts.append('<ul>')
+            for item in bullet_items:
+                body_parts.append(f'<li>{escape(item)}</li>')
+            body_parts.append('</ul>')
+        body_parts.append('</article>')
+        return ''.join(body_parts)
+
     body_parts: list[str] = [f'<article class="report-card"><header class="report-header"><h1>{escape(title)}</h1>']
     if badges:
         body_parts.append(f'<div class="report-badges">{"".join(badges)}</div>')
@@ -203,6 +225,14 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         body_parts.append('<div class="scenario-grid scenario-grid-overview">')
         for heading, bullet_items, paragraph_items in scenario_sections:
             body_parts.append(_render_scenario_card(heading, bullet_items, paragraph_items))
+        body_parts.append('</div></section>')
+
+    if observation_sections:
+        body_parts.append('<section class="observation-radar" aria-label="投資觀察雷達">')
+        body_parts.append('<div class="observation-radar-title">投資觀察雷達</div>')
+        body_parts.append('<div class="observation-grid">')
+        for heading, tone, bullet_items, paragraph_items in observation_sections:
+            body_parts.append(_render_observation_card(heading, tone, bullet_items, paragraph_items))
         body_parts.append('</div></section>')
 
     if len(sections) > 1:

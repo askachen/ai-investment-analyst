@@ -48,6 +48,29 @@ def test_stock_detail_page_renders_report_with_traditional_chinese_name(monkeypa
     assert 'scenario-grid' in response.text
 
 
+def test_stock_detail_page_shows_observation_radar_when_report_contains_catalysts_and_risks(monkeypatch):
+    report = """【個股分析報告】3017
+投資評級：買進
+信心等級：中高
+利多催化
+- GB200 水冷模組出貨升溫。
+中性觀察
+- 客戶拉貨節奏仍需持續追蹤。
+潛在風險
+- 高階散熱市場競爭升溫。"""
+    monkeypatch.setattr('ai_investment_analyst.web.app.generate_stock_report', lambda ticker: report)
+    monkeypatch.setattr('ai_investment_analyst.web.app.resolve_stock_name', lambda ticker: '奇鋐' if ticker == '3017' else None)
+
+    client = TestClient(app)
+    response = client.get('/stocks/3017')
+
+    assert response.status_code == 200
+    assert '投資觀察雷達' in response.text
+    assert 'observation-card observation-card-bull' in response.text
+    assert 'observation-card observation-card-neutral' in response.text
+    assert 'observation-card observation-card-bear' in response.text
+
+
 def test_stock_detail_page_uses_ticker_when_name_missing(monkeypatch):
     monkeypatch.setattr('ai_investment_analyst.web.app.generate_stock_report', lambda ticker: MOCK_REPORT.replace('2330', 'AAPL'))
     monkeypatch.setattr('ai_investment_analyst.web.app.resolve_stock_name', lambda ticker: None)
