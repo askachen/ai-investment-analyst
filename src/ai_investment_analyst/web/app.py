@@ -127,12 +127,22 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         body_parts.append(f'<div class="report-badges">{"".join(badges)}</div>')
     body_parts.append('</header>')
 
-    for heading, items in sections:
-        body_parts.append(f'<section class="report-section"><h2>{escape(heading)}</h2>')
+    if len(sections) > 1:
+        body_parts.append('<nav class="report-nav" aria-label="報告章節快速導覽"><span class="report-nav-label">快速導覽</span><div class="report-nav-links">')
+        for index, (heading, _) in enumerate(sections, start=1):
+            body_parts.append(f'<a href="#section-{index}">{escape(heading)}</a>')
+        body_parts.append('</div></nav>')
+
+    for index, (heading, items) in enumerate(sections, start=1):
+        section_classes = ['report-section']
+        if heading == '一句話投資主軸':
+            section_classes.append('report-section-lead')
+        body_parts.append(f'<section id="section-{index}" class="{" ".join(section_classes)}"><h2>{escape(heading)}</h2>')
         bullet_items = [item[2:] for item in items if item.startswith('- ')]
         paragraph_items = [item for item in items if not item.startswith('- ')]
-        for paragraph in paragraph_items:
-            body_parts.append(f'<p>{escape(paragraph)}</p>')
+        for paragraph_index, paragraph in enumerate(paragraph_items):
+            paragraph_class = ' class="lead-paragraph"' if heading == '一句話投資主軸' and paragraph_index == 0 else ''
+            body_parts.append(f'<p{paragraph_class}>{escape(paragraph)}</p>')
         if bullet_items:
             body_parts.append('<ul>')
             for item in bullet_items:

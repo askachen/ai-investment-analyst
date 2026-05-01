@@ -58,3 +58,27 @@ def test_render_report_html_uses_stock_name_in_title():
     html = render_report_html(report)
 
     assert '<h1>2454 聯發科</h1>' in html
+
+
+def test_render_report_html_adds_quick_navigation_and_lead_section():
+    report = """【個股分析報告】2330 台積電
+投資評級：買進
+信心等級：高
+
+一句話投資主軸
+AI 需求推升先進製程報價與產能利用率。
+
+重點摘要
+- 短中期動能穩定。
+- 現金流與獲利能力同步改善。
+
+潛在風險
+- 若終端需求放緩，評價可能壓縮。"""
+
+    html = render_report_html(report)
+
+    assert '<nav class="report-nav" aria-label="報告章節快速導覽">' in html
+    assert '<a href="#section-1">一句話投資主軸</a>' in html
+    assert '<a href="#section-2">重點摘要</a>' in html
+    assert '<section id="section-1" class="report-section report-section-lead">' in html
+    assert '<p class="lead-paragraph">AI 需求推升先進製程報價與產能利用率。</p>' in html
