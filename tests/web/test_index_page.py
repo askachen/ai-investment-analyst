@@ -54,9 +54,13 @@ def test_index_page_contains_form():
     assert 'function buildReportUrl(ticker)' in response.text
     assert 'strategy-tabs' in response.text
     assert 'strategy-chip' in response.text
+    assert 'strategy-weights' in response.text
+    assert 'strategy-weight-chip' in response.text
     assert 'async function loadLatestScreener(strategy = activeStrategy)' in response.text
     assert "fetch(`/api/screener/latest?strategy=${encodeURIComponent(strategy)}`)" in response.text
     assert 'function buildStrategyTabs(payload)' in response.text
+    assert 'function buildStrategyWeightChips(strategy)' in response.text
+    assert 'function buildWeightSummaryText(weights)' in response.text
     assert '成長動能' in response.text
     assert '價值穩健' in response.text
     assert '流動性強勢' in response.text

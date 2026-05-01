@@ -47,6 +47,14 @@ def test_latest_screener_api_returns_snapshot(monkeypatch):
     assert payload['results'][2]['ticker'] == 'AAPL'
     assert payload['results'][2]['display_name'] is None
     assert payload['strategy']['key'] == 'balanced'
+    assert payload['strategy']['weights'] == {
+        'momentum': '25%',
+        'revenue': '30%',
+        'quality': '15%',
+        'valuation': '20%',
+        'liquidity': '10%',
+    }
+    assert payload['strategies'][0]['weights']['revenue'] == '30%'
     assert len(payload['strategies']) >= 3
 
 
@@ -92,27 +100,62 @@ def test_latest_screener_api_returns_empty_payload_when_missing(monkeypatch):
             'key': 'balanced',
             'label': '平衡多因子',
             'description': '兼顧盤面、營收、品質、估值與流動性，適合做每日預設榜單。',
+            'weights': {
+                'momentum': '25%',
+                'revenue': '30%',
+                'quality': '15%',
+                'valuation': '20%',
+                'liquidity': '10%',
+            },
         },
         'strategies': [
             {
                 'key': 'balanced',
                 'label': '平衡多因子',
                 'description': '兼顧盤面、營收、品質、估值與流動性，適合做每日預設榜單。',
+                'weights': {
+                    'momentum': '25%',
+                    'revenue': '30%',
+                    'quality': '15%',
+                    'valuation': '20%',
+                    'liquidity': '10%',
+                },
             },
             {
                 'key': 'growth',
                 'label': '成長動能',
                 'description': '提高營收成長與價格動能權重，較偏中期成長股輪動。',
+                'weights': {
+                    'momentum': '30%',
+                    'revenue': '35%',
+                    'quality': '15%',
+                    'valuation': '10%',
+                    'liquidity': '10%',
+                },
             },
             {
                 'key': 'value',
                 'label': '價值穩健',
                 'description': '提高估值與品質權重，偏好獲利穩定且評價較合理的標的。',
+                'weights': {
+                    'momentum': '15%',
+                    'revenue': '15%',
+                    'quality': '20%',
+                    'valuation': '40%',
+                    'liquidity': '10%',
+                },
             },
             {
                 'key': 'flow',
                 'label': '流動性強勢',
                 'description': '提高盤面與流動性權重，較偏短中線強勢股與成交量擴張。',
+                'weights': {
+                    'momentum': '35%',
+                    'revenue': '20%',
+                    'quality': '10%',
+                    'valuation': '10%',
+                    'liquidity': '25%',
+                },
             },
         ],
         'results': [],
@@ -144,10 +187,39 @@ def test_latest_screener_api_supports_strategy_reranking(monkeypatch):
                 'key': strategy,
                 'label': '價值穩健',
                 'description': 'value snapshot',
+                'weights': {
+                    'momentum': '15%',
+                    'revenue': '15%',
+                    'quality': '20%',
+                    'valuation': '40%',
+                    'liquidity': '10%',
+                },
             },
             'strategies': [
-                {'key': 'balanced', 'label': '平衡多因子', 'description': 'balanced'},
-                {'key': 'value', 'label': '價值穩健', 'description': 'value'},
+                {
+                    'key': 'balanced',
+                    'label': '平衡多因子',
+                    'description': 'balanced',
+                    'weights': {
+                        'momentum': '25%',
+                        'revenue': '30%',
+                        'quality': '15%',
+                        'valuation': '20%',
+                        'liquidity': '10%',
+                    },
+                },
+                {
+                    'key': 'value',
+                    'label': '價值穩健',
+                    'description': 'value',
+                    'weights': {
+                        'momentum': '15%',
+                        'revenue': '15%',
+                        'quality': '20%',
+                        'valuation': '40%',
+                        'liquidity': '10%',
+                    },
+                },
             ],
             'results': [
                 {
@@ -175,5 +247,6 @@ def test_latest_screener_api_supports_strategy_reranking(monkeypatch):
     payload = response.json()
     assert calls == ['value']
     assert payload['strategy']['key'] == 'value'
+    assert payload['strategy']['weights']['valuation'] == '40%'
     assert payload['results'][0]['ticker'] == 'VALUE'
     assert payload['results'][0]['rank'] == 1

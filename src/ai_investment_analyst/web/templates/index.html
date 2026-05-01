@@ -190,6 +190,34 @@
         line-height: 1.55;
       }
 
+      .strategy-summary-text {
+        color: var(--muted);
+      }
+
+      .strategy-weights {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .strategy-weight-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(96, 165, 250, 0.18);
+        color: #dce9ff;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .strategy-weight-chip strong {
+        color: #ffffff;
+      }
+
       .screener-scroll {
         overflow-x: auto;
       }
@@ -1062,7 +1090,10 @@
           </div>
         </div>
         <div id="strategy-tabs" class="strategy-tabs"></div>
-        <div id="strategy-summary" class="strategy-summary">可切換不同策略權重觀察同一批候選股。</div>
+        <div id="strategy-summary" class="strategy-summary">
+          <div class="strategy-summary-text">可切換不同策略權重觀察同一批候選股。</div>
+          <div id="strategy-weights" class="strategy-weights"></div>
+        </div>
         <div id="daily-screener" class="placeholder" style="margin: 18px;">載入今日推薦中...</div>
       </section>
 
@@ -1087,12 +1118,33 @@
       const screener = document.getElementById('daily-screener');
       const strategyTabs = document.getElementById('strategy-tabs');
       const strategySummary = document.getElementById('strategy-summary');
+      const strategyWeights = document.getElementById('strategy-weights');
       const submitButton = form.querySelector('button[type="submit"]');
       const DEFAULT_STRATEGIES = [
-        {key: 'balanced', label: '平衡多因子', description: '兼顧盤面、營收、品質、估值與流動性。'},
-        {key: 'growth', label: '成長動能', description: '提高營收成長與價格動能權重。'},
-        {key: 'value', label: '價值穩健', description: '提高估值與品質權重。'},
-        {key: 'flow', label: '流動性強勢', description: '提高動能與成交量權重。'},
+        {
+          key: 'balanced',
+          label: '平衡多因子',
+          description: '兼顧盤面、營收、品質、估值與流動性。',
+          weights: {momentum: '25%', revenue: '30%', quality: '15%', valuation: '20%', liquidity: '10%'},
+        },
+        {
+          key: 'growth',
+          label: '成長動能',
+          description: '提高營收成長與價格動能權重。',
+          weights: {momentum: '30%', revenue: '35%', quality: '15%', valuation: '10%', liquidity: '10%'},
+        },
+        {
+          key: 'value',
+          label: '價值穩健',
+          description: '提高估值與品質權重。',
+          weights: {momentum: '15%', revenue: '15%', quality: '20%', valuation: '40%', liquidity: '10%'},
+        },
+        {
+          key: 'flow',
+          label: '流動性強勢',
+          description: '提高動能與成交量權重。',
+          weights: {momentum: '35%', revenue: '20%', quality: '10%', valuation: '10%', liquidity: '25%'},
+        },
       ];
       let activeStrategy = 'balanced';
 
@@ -1176,7 +1228,8 @@
         const strategies = payload.strategies?.length ? payload.strategies : DEFAULT_STRATEGIES;
         if (strategies.length === 0) {
           strategyTabs.innerHTML = '';
-          strategySummary.textContent = '目前沒有可切換的策略。';
+          strategySummary.querySelector('.strategy-summary-text').textContent = '目前沒有可切換的策略。';
+          strategyWeights.innerHTML = '';
           return;
         }
         strategyTabs.innerHTML = strategies.map((strategy) => `
@@ -1190,7 +1243,8 @@
           </button>
         `).join('');
         const active = payload.strategy || strategies.find((item) => item.key === activeStrategy) || strategies[0];
-        strategySummary.textContent = `${active.label}：${active.description}`;
+        strategySummary.querySelector('.strategy-summary-text').textContent = `${active.label}：${active.description}`;
+        strategyWeights.innerHTML = buildStrategyWeightChips(active);
         strategyTabs.querySelectorAll('[data-strategy]').forEach((button) => {
           button.addEventListener('click', () => {
             const strategy = button.getAttribute('data-strategy');
@@ -1216,14 +1270,33 @@
         `).join('');
       }
 
-      function buildFactorExplanationList(factorScores) {
+      function buildStrategyWeightChips(strategy) {
+        const weights = Object.entries(strategy?.weights || {});
+        if (weights.length === 0) {
+          return '';
+        }
+        return weights.map(([key, value]) => `
+          <span class="strategy-weight-chip"><span>${escapeHtml(factorLabel(key))}</span><strong>${escapeHtml(value)}</strong></span>
+        `).join('');
+      }
+
+      function buildWeightSummaryText(weights) {
+        const entries = Object.entries(weights || {});
+        if (entries.length === 0) {
+          return '總分：綜合五個因子加權後的結果。';
+        }
+        const summary = entries.map(([key, value]) => `${factorLabel(key)} ${value}`).join('、');
+        return `總分：綜合五個因子加權後的結果。此策略權重為 ${summary}。`;
+      }
+
+      function buildFactorExplanationList(factorScores, weights) {
         const entries = Object.entries(factorScores || {});
         if (entries.length === 0) {
           return '<div class="factor-explainer"><p>目前沒有足夠資料可拆解模型因子。</p></div>';
         }
         return `
           <div class="factor-explainer">
-            <p>總分：綜合五個因子加權後的結果。權重為盤面 25%、營收 30%、品質 15%、估值 20%、流動性 10%。</p>
+            <p>${escapeHtml(buildWeightSummaryText(weights))}</p>
             <p>為什麼會 0 分？通常代表該因子目前偏弱、資料不足，或沒有通過最低門檻。</p>
             ${entries.map(([key, value]) => `<p><strong>${escapeHtml(factorLabel(key))} ${escapeHtml(formatDecimal(value))}/100：</strong>${escapeHtml(buildFactorExplanation(key, value))}</p>`).join('')}
           </div>
@@ -1278,7 +1351,7 @@
                   <details class="score-details">
                     <summary class="score-badge"><span>模型分數</span><strong>${escapeHtml(totalScore)}</strong></summary>
                     <div class="score-panel">
-                      ${buildFactorExplanationList(item.factor_scores)}
+                      ${buildFactorExplanationList(item.factor_scores, payload.strategy?.weights)}
                       <div class="factor-grid" style="margin-top: 10px;">${buildFactorCards(item.factor_scores, reasons)}</div>
                     </div>
                   </details>

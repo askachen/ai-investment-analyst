@@ -6,6 +6,7 @@ import os
 from secrets import compare_digest
 from pathlib import Path
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -54,6 +55,7 @@ class ScreenerStrategyResponse(BaseModel):
     key: str
     label: str
     description: str
+    weights: dict[str, str] = Field(default_factory=dict)
 
 
 class ScreenerSnapshotResponse(BaseModel):
@@ -280,24 +282,22 @@ def enrich_screener_snapshot(snapshot: dict) -> dict:
     }
 
 
-def _serialize_strategy(strategy_key: str) -> dict[str, str]:
+def _serialize_strategy(strategy_key: str) -> dict[str, str | dict[str, str]]:
     strategy = get_strategy_profile(strategy_key)
+    weights = {
+        key: f'{int((weight * 100).quantize(Decimal("1")))}%'
+        for key, weight in strategy.weights.items()
+    }
     return {
         'key': strategy.key,
         'label': strategy.label,
         'description': strategy.description,
+        'weights': weights,
     }
 
 
-def _list_serialized_strategies() -> list[dict[str, str]]:
-    return [
-        {
-            'key': strategy.key,
-            'label': strategy.label,
-            'description': strategy.description,
-        }
-        for strategy in list_strategy_profiles()
-    ]
+def _list_serialized_strategies() -> list[dict[str, str | dict[str, str]]]:
+    return [_serialize_strategy(strategy.key) for strategy in list_strategy_profiles()]
 
 
 def get_web_login_username() -> str:
