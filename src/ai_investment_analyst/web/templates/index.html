@@ -142,6 +142,54 @@
         font-size: 14px;
       }
 
+      .strategy-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 16px 22px 0;
+      }
+
+      .strategy-chip {
+        border: 1px solid rgba(96, 165, 250, 0.18);
+        background: rgba(15, 23, 42, 0.58);
+        color: #dce9ff;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.2;
+        cursor: pointer;
+        transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+      }
+
+      .strategy-chip:hover {
+        transform: translateY(-1px);
+        border-color: rgba(96, 165, 250, 0.4);
+      }
+
+      .strategy-chip.is-active {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(96, 165, 250, 0.86));
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+      }
+
+      .strategy-chip small {
+        display: block;
+        margin-top: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        color: inherit;
+        opacity: 0.86;
+      }
+
+      .strategy-summary {
+        padding: 12px 22px 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
       .screener-scroll {
         overflow-x: auto;
       }
@@ -1013,6 +1061,8 @@
             <span><i class="warn"></i> 需持續觀察</span>
           </div>
         </div>
+        <div id="strategy-tabs" class="strategy-tabs"></div>
+        <div id="strategy-summary" class="strategy-summary">可切換不同策略權重觀察同一批候選股。</div>
         <div id="daily-screener" class="placeholder" style="margin: 18px;">載入今日推薦中...</div>
       </section>
 
@@ -1035,7 +1085,16 @@
       const form = document.getElementById('report-form');
       const result = document.getElementById('result-html');
       const screener = document.getElementById('daily-screener');
+      const strategyTabs = document.getElementById('strategy-tabs');
+      const strategySummary = document.getElementById('strategy-summary');
       const submitButton = form.querySelector('button[type="submit"]');
+      const DEFAULT_STRATEGIES = [
+        {key: 'balanced', label: '平衡多因子', description: '兼顧盤面、營收、品質、估值與流動性。'},
+        {key: 'growth', label: '成長動能', description: '提高營收成長與價格動能權重。'},
+        {key: 'value', label: '價值穩健', description: '提高估值與品質權重。'},
+        {key: 'flow', label: '流動性強勢', description: '提高動能與成交量權重。'},
+      ];
+      let activeStrategy = 'balanced';
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -1111,6 +1170,37 @@
 
       function buildReportUrl(ticker) {
         return `/stocks/${encodeURIComponent(ticker)}`;
+      }
+
+      function buildStrategyTabs(payload) {
+        const strategies = payload.strategies?.length ? payload.strategies : DEFAULT_STRATEGIES;
+        if (strategies.length === 0) {
+          strategyTabs.innerHTML = '';
+          strategySummary.textContent = '目前沒有可切換的策略。';
+          return;
+        }
+        strategyTabs.innerHTML = strategies.map((strategy) => `
+          <button
+            type="button"
+            class="strategy-chip ${strategy.key === activeStrategy ? 'is-active' : ''}"
+            data-strategy="${escapeHtml(strategy.key)}"
+          >
+            ${escapeHtml(strategy.label)}
+            <small>${escapeHtml(strategy.description)}</small>
+          </button>
+        `).join('');
+        const active = payload.strategy || strategies.find((item) => item.key === activeStrategy) || strategies[0];
+        strategySummary.textContent = `${active.label}：${active.description}`;
+        strategyTabs.querySelectorAll('[data-strategy]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const strategy = button.getAttribute('data-strategy');
+            if (!strategy || strategy === activeStrategy) {
+              return;
+            }
+            activeStrategy = strategy;
+            loadLatestScreener(strategy);
+          });
+        });
       }
 
       function buildFactorChips(factorScores) {
@@ -1261,10 +1351,12 @@
         `;
       }
 
-      async function loadLatestScreener() {
+      async function loadLatestScreener(strategy = activeStrategy) {
+        activeStrategy = strategy;
         try {
-          const response = await fetch('/api/screener/latest');
+          const response = await fetch(`/api/screener/latest?strategy=${encodeURIComponent(strategy)}`);
           const payload = await response.json();
+          buildStrategyTabs(payload);
           if (!response.ok) {
             screener.innerHTML = '<div class="placeholder">目前無法載入今日推薦排名。</div>';
             return;
@@ -1278,8 +1370,9 @@
           screener.style.background = 'transparent';
           const generatedLabel = payload.run_date || 'N/A';
           const timestampLabel = payload.generated_at || '';
+          const strategyLabel = payload.strategy?.label || '平衡多因子';
           screener.innerHTML = `
-            <div style="padding: 18px 22px 0;" class="muted">策略更新日：${escapeHtml(generatedLabel)}　${escapeHtml(timestampLabel)}　｜　候選數：${escapeHtml(payload.candidate_count ?? 'N/A')}</div>
+            <div style="padding: 18px 22px 0;" class="muted">策略更新日：${escapeHtml(generatedLabel)}　${escapeHtml(timestampLabel)}　｜　候選數：${escapeHtml(payload.candidate_count ?? 'N/A')}　｜　目前策略：${escapeHtml(strategyLabel)}</div>
             ${buildScreenerTable(payload)}
           `;
         } catch (error) {

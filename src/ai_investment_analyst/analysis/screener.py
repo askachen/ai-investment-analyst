@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Callable
 
@@ -10,6 +10,13 @@ from ai_investment_analyst.db.connection import get_connection
 
 ZERO = Decimal("0")
 ONE_HUNDRED = Decimal("100")
+DEFAULT_FACTOR_WEIGHTS = {
+    "momentum": Decimal("0.25"),
+    "revenue": Decimal("0.30"),
+    "quality": Decimal("0.15"),
+    "valuation": Decimal("0.20"),
+    "liquidity": Decimal("0.10"),
+}
 
 
 @dataclass(frozen=True)
@@ -35,12 +42,79 @@ class ScreeningCriteria:
 
 
 @dataclass(frozen=True)
+class StrategyProfile:
+    key: str
+    label: str
+    description: str
+    weights: dict[str, Decimal] = field(default_factory=lambda: DEFAULT_FACTOR_WEIGHTS.copy())
+    criteria: ScreeningCriteria = field(default_factory=ScreeningCriteria)
+
+
+@dataclass(frozen=True)
 class RankedCandidate:
     candidate: ScreeningCandidate
     passed: bool
     total_score: Decimal
     factor_scores: dict[str, Decimal]
     reasons: list[str]
+
+
+STRATEGY_PROFILES = {
+    "balanced": StrategyProfile(
+        key="balanced",
+        label="平衡多因子",
+        description="兼顧盤面、營收、品質、估值與流動性，適合做每日預設榜單。",
+        weights=DEFAULT_FACTOR_WEIGHTS.copy(),
+    ),
+    "growth": StrategyProfile(
+        key="growth",
+        label="成長動能",
+        description="提高營收成長與價格動能權重，較偏中期成長股輪動。",
+        weights={
+            "momentum": Decimal("0.30"),
+            "revenue": Decimal("0.35"),
+            "quality": Decimal("0.15"),
+            "valuation": Decimal("0.10"),
+            "liquidity": Decimal("0.10"),
+        },
+    ),
+    "value": StrategyProfile(
+        key="value",
+        label="價值穩健",
+        description="提高估值與品質權重，偏好獲利穩定且評價較合理的標的。",
+        weights={
+            "momentum": Decimal("0.15"),
+            "revenue": Decimal("0.15"),
+            "quality": Decimal("0.20"),
+            "valuation": Decimal("0.40"),
+            "liquidity": Decimal("0.10"),
+        },
+    ),
+    "flow": StrategyProfile(
+        key="flow",
+        label="流動性強勢",
+        description="提高盤面與流動性權重，較偏短中線強勢股與成交量擴張。",
+        weights={
+            "momentum": Decimal("0.35"),
+            "revenue": Decimal("0.20"),
+            "quality": Decimal("0.10"),
+            "valuation": Decimal("0.10"),
+            "liquidity": Decimal("0.25"),
+        },
+    ),
+}
+
+
+def list_strategy_profiles() -> list[StrategyProfile]:
+    return list(STRATEGY_PROFILES.values())
+
+
+def get_strategy_profile(strategy: str | StrategyProfile | None = None) -> StrategyProfile:
+    if isinstance(strategy, StrategyProfile):
+        return strategy
+    if strategy and strategy in STRATEGY_PROFILES:
+        return STRATEGY_PROFILES[strategy]
+    return STRATEGY_PROFILES["balanced"]
 
 
 def _quantize_2(value: Decimal) -> Decimal:
@@ -97,6 +171,17 @@ def _factor_scores(candidate: ScreeningCandidate) -> dict[str, Decimal]:
         "valuation": _valuation_score(candidate),
         "liquidity": _liquidity_score(candidate),
     }
+
+
+def calculate_total_score(
+    factor_scores: dict[str, Decimal],
+    weights: dict[str, Decimal] | None = None,
+) -> Decimal:
+    effective_weights = weights or DEFAULT_FACTOR_WEIGHTS
+    total = ZERO
+    for key, weight in effective_weights.items():
+        total += factor_scores.get(key, ZERO) * weight
+    return _quantize_2(total)
 
 
 def _build_reasons(candidate: ScreeningCandidate) -> list[str]:
@@ -193,18 +278,14 @@ def load_screener_candidates(
 def score_candidates(
     candidates: list[ScreeningCandidate],
     criteria: ScreeningCriteria | None = None,
+    strategy: str | StrategyProfile | None = None,
 ) -> list[RankedCandidate]:
-    criteria = criteria or ScreeningCriteria()
+    strategy_profile = get_strategy_profile(strategy)
+    criteria = criteria or strategy_profile.criteria
     ranked: list[RankedCandidate] = []
     for candidate in candidates:
         factor_scores = _factor_scores(candidate)
-        total_score = _quantize_2(
-            (factor_scores["momentum"] * Decimal("0.25"))
-            + (factor_scores["revenue"] * Decimal("0.30"))
-            + (factor_scores["quality"] * Decimal("0.15"))
-            + (factor_scores["valuation"] * Decimal("0.20"))
-            + (factor_scores["liquidity"] * Decimal("0.10"))
-        )
+        total_score = calculate_total_score(factor_scores, strategy_profile.weights)
         ranked.append(
             RankedCandidate(
                 candidate=candidate,

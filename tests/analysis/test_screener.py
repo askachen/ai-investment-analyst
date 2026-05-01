@@ -3,6 +3,7 @@ from decimal import Decimal
 from ai_investment_analyst.analysis.screener import (
     ScreeningCandidate,
     ScreeningCriteria,
+    get_strategy_profile,
     load_screener_candidates,
     render_screening_results,
     score_candidates,
@@ -228,3 +229,38 @@ def test_render_screening_results_formats_ranked_candidates_with_reasons():
     assert "動能" in report
     assert "月營收年增 22.30%" in report
     assert "2. 2454" in report
+
+
+def test_score_candidates_supports_strategy_presets_for_reranking():
+    candidates = [
+        make_candidate(
+            ticker="GROWTH",
+            close_price="120",
+            price_5d_change_pct="4.0",
+            price_10d_change_pct="9.0",
+            average_volume_5d=1200000,
+            revenue_yoy_pct="30.0",
+            revenue_mom_pct="12.0",
+            eps="4.0",
+            pe_ratio="35.0",
+            pb_ratio="6.0",
+        ),
+        make_candidate(
+            ticker="VALUE",
+            close_price="85",
+            price_5d_change_pct="1.0",
+            price_10d_change_pct="2.0",
+            average_volume_5d=600000,
+            revenue_yoy_pct="8.0",
+            revenue_mom_pct="1.0",
+            eps="8.0",
+            pe_ratio="9.0",
+            pb_ratio="1.1",
+        ),
+    ]
+
+    growth_ranked = score_candidates(candidates, strategy=get_strategy_profile("growth"))
+    value_ranked = score_candidates(candidates, strategy=get_strategy_profile("value"))
+
+    assert growth_ranked[0].candidate.ticker == "GROWTH"
+    assert value_ranked[0].candidate.ticker == "VALUE"

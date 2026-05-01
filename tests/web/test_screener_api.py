@@ -46,6 +46,8 @@ def test_latest_screener_api_returns_snapshot(monkeypatch):
     assert payload['results'][1]['display_name'] == '聯發科'
     assert payload['results'][2]['ticker'] == 'AAPL'
     assert payload['results'][2]['display_name'] is None
+    assert payload['strategy']['key'] == 'balanced'
+    assert len(payload['strategies']) >= 3
 
 
 def test_resolve_screener_display_name_falls_back_to_db_local_name(monkeypatch):
@@ -86,6 +88,33 @@ def test_latest_screener_api_returns_empty_payload_when_missing(monkeypatch):
         'generated_at': None,
         'universe_size': None,
         'candidate_count': None,
+        'strategy': {
+            'key': 'balanced',
+            'label': '平衡多因子',
+            'description': '兼顧盤面、營收、品質、估值與流動性，適合做每日預設榜單。',
+        },
+        'strategies': [
+            {
+                'key': 'balanced',
+                'label': '平衡多因子',
+                'description': '兼顧盤面、營收、品質、估值與流動性，適合做每日預設榜單。',
+            },
+            {
+                'key': 'growth',
+                'label': '成長動能',
+                'description': '提高營收成長與價格動能權重，較偏中期成長股輪動。',
+            },
+            {
+                'key': 'value',
+                'label': '價值穩健',
+                'description': '提高估值與品質權重，偏好獲利穩定且評價較合理的標的。',
+            },
+            {
+                'key': 'flow',
+                'label': '流動性強勢',
+                'description': '提高盤面與流動性權重，較偏短中線強勢股與成交量擴張。',
+            },
+        ],
         'results': [],
     }
 
@@ -101,3 +130,53 @@ def test_latest_screener_api_returns_empty_payload_when_store_fails(monkeypatch)
 
     assert response.status_code == 200
     assert response.json()['results'] == []
+
+
+def test_latest_screener_api_supports_strategy_reranking(monkeypatch):
+    monkeypatch.setattr('ai_investment_analyst.web.app.resolve_screener_display_name', lambda ticker: None)
+    monkeypatch.setattr(
+        'ai_investment_analyst.web.app.load_latest_screener_snapshot',
+        lambda: {
+            'run_date': '2026-05-01',
+            'generated_at': '2026-05-01T01:10:00+00:00',
+            'results': [
+                {
+                    'rank': 1,
+                    'ticker': 'GROWTH',
+                    'total_score': '72.00',
+                    'close_price': '120',
+                    'factor_scores': {
+                        'momentum': '60',
+                        'revenue': '100',
+                        'quality': '64',
+                        'valuation': '0',
+                        'liquidity': '2.4',
+                    },
+                    'reasons': ['growth'],
+                },
+                {
+                    'rank': 2,
+                    'ticker': 'VALUE',
+                    'total_score': '68.00',
+                    'close_price': '85',
+                    'factor_scores': {
+                        'momentum': '14',
+                        'revenue': '48',
+                        'quality': '88',
+                        'valuation': '89.76',
+                        'liquidity': '1.2',
+                    },
+                    'reasons': ['value'],
+                },
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get('/api/screener/latest?strategy=value')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['strategy']['key'] == 'value'
+    assert payload['results'][0]['ticker'] == 'VALUE'
+    assert payload['results'][0]['rank'] == 1

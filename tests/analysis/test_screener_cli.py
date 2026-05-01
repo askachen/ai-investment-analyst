@@ -122,3 +122,33 @@ def test_run_screener_cli_falls_back_when_primary_context_loader_fails():
     )
 
     assert "1. 2330" in report
+
+
+def test_run_screener_cli_accepts_strategy_preset():
+    contexts = {
+        "GROWTH": make_context(
+            ticker="GROWTH",
+            close_price="120",
+            recent_prices=["120", "119", "118", "117", "116", "114", "112", "111", "110", "108"],
+            revenue_yoy_pct="30.0",
+            revenue_mom_pct="12.0",
+            eps="4.0",
+        ),
+        "VALUE": make_context(
+            ticker="VALUE",
+            close_price="85",
+            recent_prices=["85", "84.5", "84", "83.5", "83", "82.8", "82.5", "82", "81.5", "81"],
+            revenue_yoy_pct="8.0",
+            revenue_mom_pct="1.0",
+            eps="8.0",
+        ),
+    }
+
+    report = run_screener_cli(
+        ["--strategy", "value", "GROWTH", "VALUE"],
+        context_loader=lambda ticker: contexts[ticker],
+        volume_loader=lambda ticker: {"GROWTH": 1200000, "VALUE": 600000}[ticker],
+        pb_ratio_loader=lambda ticker: {"GROWTH": Decimal("6.0"), "VALUE": Decimal("1.1")}[ticker],
+    )
+
+    assert "1. VALUE" in report

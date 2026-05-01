@@ -6,6 +6,7 @@ from typing import Callable, Sequence
 
 from ai_investment_analyst.analysis.screener import (
     ScreeningCriteria,
+    get_strategy_profile,
     load_screener_candidates,
     render_screening_results,
     score_candidates,
@@ -20,6 +21,7 @@ from ai_investment_analyst.analysis.stock_report import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the AI Investment Analyst stock screener")
     parser.add_argument("tickers", nargs="+", help="Ticker symbols to score, e.g. 2330 2454 AAPL")
+    parser.add_argument("--strategy", choices=["balanced", "growth", "value", "flow"], default="balanced")
     parser.add_argument("--min-revenue-yoy", type=Decimal, default=Decimal("0"))
     parser.add_argument("--min-eps", type=Decimal, default=Decimal("0"))
     parser.add_argument("--max-pe", type=Decimal, default=Decimal("999"))
@@ -38,6 +40,7 @@ def run_screener_cli(
 ) -> str:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
+    strategy_profile = get_strategy_profile(args.strategy)
     criteria = ScreeningCriteria(
         min_revenue_yoy_pct=args.min_revenue_yoy,
         min_eps=args.min_eps,
@@ -59,7 +62,7 @@ def run_screener_cli(
     if volume_loader is not None:
         load_kwargs["volume_loader"] = volume_loader
     candidates = load_screener_candidates(**load_kwargs)
-    ranked = score_candidates(candidates, criteria)
+    ranked = score_candidates(candidates, criteria, strategy=strategy_profile)
     return render_screening_results(ranked, limit=args.limit)
 
 

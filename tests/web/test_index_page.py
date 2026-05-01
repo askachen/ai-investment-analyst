@@ -42,7 +42,7 @@ def test_index_page_contains_form():
     assert 'factor-raw-value' in response.text
     assert 'factor-card' in response.text
     assert 'action="/logout"' not in response.text
-    assert "fetch('/api/screener/latest')" in response.text
+    assert "fetch(`/api/screener/latest?strategy=${encodeURIComponent(strategy)}`)" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
     assert 'submitButton.disabled = true;' in response.text
     assert 'submitButton.disabled = false;' in response.text
@@ -52,6 +52,14 @@ def test_index_page_contains_form():
     assert 'function buildRawFactorValue(key, reasons)' in response.text
     assert 'function buildFactorCards(factorScores, reasons)' in response.text
     assert 'function buildReportUrl(ticker)' in response.text
+    assert 'strategy-tabs' in response.text
+    assert 'strategy-chip' in response.text
+    assert 'async function loadLatestScreener(strategy = activeStrategy)' in response.text
+    assert "fetch(`/api/screener/latest?strategy=${encodeURIComponent(strategy)}`)" in response.text
+    assert 'function buildStrategyTabs(payload)' in response.text
+    assert '成長動能' in response.text
+    assert '價值穩健' in response.text
+    assert '流動性強勢' in response.text
     assert '點左側模型分數 可展開五個因子分數、權重與 0 分原因。' not in response.text
     assert '總分：綜合五個因子加權後的結果' in response.text
     assert '為什麼會 0 分？通常代表該因子目前偏弱' in response.text
