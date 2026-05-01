@@ -198,6 +198,49 @@
       }
       .report-section ul { margin: 0; padding-left: 20px; }
       .report-section li { margin-bottom: 8px; line-height: 1.6; }
+      .financial-snapshot-grid,
+      .scenario-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+      .financial-snapshot-card,
+      .scenario-card {
+        display: grid;
+        gap: 8px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+      }
+      .financial-snapshot-label,
+      .scenario-card-label {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #9db2d1;
+      }
+      .financial-snapshot-value {
+        font-size: 24px;
+        line-height: 1.2;
+        color: #f8fbff;
+      }
+      .scenario-card-bull {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.88));
+        border-color: rgba(52, 211, 153, 0.2);
+      }
+      .scenario-card-base {
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.12), rgba(15, 23, 42, 0.88));
+        border-color: rgba(96, 165, 250, 0.2);
+      }
+      .scenario-card-bear {
+        background: linear-gradient(135deg, rgba(251, 113, 133, 0.12), rgba(15, 23, 42, 0.88));
+        border-color: rgba(251, 113, 133, 0.2);
+      }
+      .scenario-card p,
+      .scenario-card ul {
+        margin: 0;
+      }
 
       @media (max-width: 768px) {
         .page { padding: 14px 10px 28px; }

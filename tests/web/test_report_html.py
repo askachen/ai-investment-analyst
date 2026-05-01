@@ -39,7 +39,9 @@ Bear Case
     assert '<span class="badge badge-rating">投資評級：中立</span>' in html
     assert '<h2>一句話投資主軸</h2>' in html
     assert '<h2>財務摘要表</h2>' in html
-    assert '<li>營收：6500.00 億元</li>' in html
+    assert '<div class="financial-snapshot-grid">' in html
+    assert '<span class="financial-snapshot-label">營收</span>' in html
+    assert '<strong class="financial-snapshot-value">6500.00 億元</strong>' in html
     assert '<h2>目標價推導</h2>' in html
     assert '<h2>Bull Case</h2>' in html
     assert '<h2>Base Case</h2>' in html
@@ -95,3 +97,40 @@ AI 需求推升先進製程報價與產能利用率。
     assert '<strong>偏高</strong>' in html
     assert '合理價區間：約 950 - 1,080 元。' in html
     assert '目標價約 990 元。' in html
+
+
+def test_render_report_html_promotes_financial_snapshot_and_scenarios():
+    report = """【個股分析報告】2330 台積電
+投資評級：買進
+信心等級：高
+
+一句話投資主軸
+先進製程需求持續增溫。
+
+財務摘要表
+- 營收：6500.00 億元
+- EPS：10.25
+- 淨利：2600.00 億元
+
+Bull Case
+- AI 資本支出續強，推升產能利用率。
+
+Base Case
+- 高速運算需求延續，獲利穩步成長。
+
+Bear Case
+- 終端需求放緩，評價面臨修正。"""
+
+    html = render_report_html(report)
+
+    assert '<div class="financial-snapshot-grid">' in html
+    assert '<article class="financial-snapshot-card">' in html
+    assert '<span class="financial-snapshot-label">營收</span>' in html
+    assert '<strong class="financial-snapshot-value">6500.00 億元</strong>' in html
+    assert '<div class="scenario-grid">' in html
+    assert '<article class="scenario-card scenario-card-bull">' in html
+    assert '<article class="scenario-card scenario-card-base">' in html
+    assert '<article class="scenario-card scenario-card-bear">' in html
+    assert 'AI 資本支出續強，推升產能利用率。' in html
+    assert '高速運算需求延續，獲利穩步成長。' in html
+    assert '終端需求放緩，評價面臨修正。' in html

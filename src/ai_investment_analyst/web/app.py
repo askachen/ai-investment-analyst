@@ -138,6 +138,35 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         elif heading == '目標價推導' and paragraph_items:
             insight_cards.append(('目標價推導', paragraph_items[0]))
 
+    def _extract_financial_snapshot_cards(items: list[str]) -> list[tuple[str, str]]:
+        cards: list[tuple[str, str]] = []
+        for item in items:
+            if not item.startswith('- '):
+                continue
+            label, _, value = item[2:].partition('：')
+            label = label.strip()
+            value = value.strip()
+            if label and value:
+                cards.append((label, value))
+        return cards
+
+    def _render_scenario_card(heading: str, bullet_items: list[str], paragraph_items: list[str]) -> str:
+        tone = {
+            'Bull Case': 'bull',
+            'Base Case': 'base',
+            'Bear Case': 'bear',
+        }.get(heading, 'base')
+        body_parts = [f'<article class="scenario-card scenario-card-{tone}"><div class="scenario-card-label">{escape(heading)}</div>']
+        for paragraph in paragraph_items:
+            body_parts.append(f'<p>{escape(paragraph)}</p>')
+        if bullet_items:
+            body_parts.append('<ul>')
+            for item in bullet_items:
+                body_parts.append(f'<li>{escape(item)}</li>')
+            body_parts.append('</ul>')
+        body_parts.append('</article>')
+        return ''.join(body_parts)
+
     body_parts: list[str] = [f'<article class="report-card"><header class="report-header"><h1>{escape(title)}</h1>']
     if badges:
         body_parts.append(f'<div class="report-badges">{"".join(badges)}</div>')
@@ -169,7 +198,25 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         for paragraph_index, paragraph in enumerate(paragraph_items):
             paragraph_class = ' class="lead-paragraph"' if heading == '一句話投資主軸' and paragraph_index == 0 else ''
             body_parts.append(f'<p{paragraph_class}>{escape(paragraph)}</p>')
-        if bullet_items:
+        if heading == '財務摘要表':
+            snapshot_cards = _extract_financial_snapshot_cards(items)
+            if snapshot_cards:
+                body_parts.append('<div class="financial-snapshot-grid">')
+                for label, value in snapshot_cards:
+                    body_parts.append(
+                        f'<article class="financial-snapshot-card"><span class="financial-snapshot-label">{escape(label)}</span><strong class="financial-snapshot-value">{escape(value)}</strong></article>'
+                    )
+                body_parts.append('</div>')
+            elif bullet_items:
+                body_parts.append('<ul>')
+                for item in bullet_items:
+                    body_parts.append(f'<li>{escape(item)}</li>')
+                body_parts.append('</ul>')
+        elif heading in {'Bull Case', 'Base Case', 'Bear Case'}:
+            body_parts.append('<div class="scenario-grid">')
+            body_parts.append(_render_scenario_card(heading, bullet_items, paragraph_items))
+            body_parts.append('</div>')
+        elif bullet_items:
             body_parts.append('<ul>')
             for item in bullet_items:
                 body_parts.append(f'<li>{escape(item)}</li>')
