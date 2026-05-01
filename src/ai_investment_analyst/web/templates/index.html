@@ -420,6 +420,53 @@
         gap: 10px;
       }
 
+      .factor-card {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(148, 163, 184, 0.10);
+      }
+
+      .factor-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+
+      .factor-card-label {
+        color: #eef4ff;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .factor-card-score {
+        color: #dbeafe;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .factor-meter {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+      }
+
+      .factor-meter-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #5e6ad2, #8b95ff);
+      }
+
+      .factor-raw-value {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
       .factor-chip {
         display: flex;
         justify-content: space-between;
@@ -819,6 +866,21 @@
           font-size: 11px;
         }
 
+        .factor-card {
+          padding: 8px 9px;
+          border-radius: 10px;
+        }
+
+        .factor-card-top {
+          margin-bottom: 6px;
+        }
+
+        .factor-card-label,
+        .factor-card-score,
+        .factor-raw-value {
+          font-size: 11px;
+        }
+
         .compact-meta-item {
           padding: 6px 7px;
           border-radius: 10px;
@@ -994,6 +1056,16 @@
         return base;
       }
 
+      function buildRawFactorValue(key, reasons) {
+        return {
+          momentum: reasons[0] || '近 5 / 10 日動能資料待補',
+          revenue: reasons[1] || '營收資料待補',
+          quality: reasons[2] || 'EPS 資料待補',
+          valuation: reasons[3] || '估值資料待補',
+          liquidity: reasons[4] || '流動性資料待補',
+        }[key] || '原始值資料待補';
+      }
+
       function buildMarketSummary(reasons) {
         return reasons[0] || '目前尚無額外盤面摘要。';
       }
@@ -1038,6 +1110,26 @@
         `;
       }
 
+      function buildFactorCards(factorScores, reasons) {
+        const entries = Object.entries(factorScores || {});
+        if (entries.length === 0) {
+          return '<div class="factor-card"><div class="factor-raw-value">目前沒有足夠資料可顯示因子卡。</div></div>';
+        }
+        return entries.map(([key, value]) => {
+          const score = Math.max(0, Math.min(100, Number(value || 0)));
+          return `
+            <div class="factor-card">
+              <div class="factor-card-top">
+                <span class="factor-card-label">${escapeHtml(factorLabel(key))}</span>
+                <span class="factor-card-score">${escapeHtml(formatDecimal(value))}/100</span>
+              </div>
+              <div class="factor-meter"><div class="factor-meter-fill" style="width:${score}%;"></div></div>
+              <div class="factor-raw-value">${escapeHtml(buildRawFactorValue(key, reasons))}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
       function buildScreenerTable(payload) {
         const rows = payload.results.slice(0, 12).map((item) => {
           const reasons = item.reasons || [];
@@ -1062,7 +1154,7 @@
                     <summary class="score-badge"><span>模型分數</span><strong>${escapeHtml(totalScore)}</strong></summary>
                     <div class="score-panel">
                       ${buildFactorExplanationList(item.factor_scores)}
-                      <div class="factor-grid" style="margin-top: 10px;">${buildFactorChips(item.factor_scores)}</div>
+                      <div class="factor-grid" style="margin-top: 10px;">${buildFactorCards(item.factor_scores, reasons)}</div>
                     </div>
                   </details>
                 </div>

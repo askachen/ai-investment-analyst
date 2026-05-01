@@ -34,6 +34,10 @@ def test_index_page_contains_form():
     assert 'summary-grid' in response.text
     assert 'summary-card' in response.text
     assert 'detail-section' in response.text
+    assert 'factor-meter' in response.text
+    assert 'factor-meter-fill' in response.text
+    assert 'factor-raw-value' in response.text
+    assert 'factor-card' in response.text
     assert 'action="/logout"' not in response.text
     assert "fetch('/api/screener/latest')" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
@@ -42,6 +46,8 @@ def test_index_page_contains_form():
     assert 'result.innerHTML = payload.report_html;' in response.text
     assert 'function formatDecimal(value, digits = 1)' in response.text
     assert 'function buildFactorExplanation(key, value)' in response.text
+    assert 'function buildRawFactorValue(key, reasons)' in response.text
+    assert 'function buildFactorCards(factorScores, reasons)' in response.text
     assert 'function buildReportUrl(ticker)' in response.text
     assert '總分：綜合五個因子加權後的結果' in response.text
     assert '為什麼會 0 分？通常代表該因子目前偏弱' in response.text
