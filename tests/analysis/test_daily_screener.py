@@ -6,7 +6,7 @@ from ai_investment_analyst.analysis.stock_report import (
     RevenuePoint,
     StockReportContext,
 )
-from ai_investment_analyst.analysis.daily_screener import generate_daily_screening
+from ai_investment_analyst.analysis.daily_screener import generate_daily_screening, generate_all_daily_screenings
 
 
 def make_context(
@@ -55,6 +55,7 @@ def test_generate_daily_screening_scores_and_persists_snapshot():
     )
 
     assert snapshot.run_date
+    assert snapshot.strategy_key == 'balanced'
     assert snapshot.results[0].ticker == '2330'
     assert snapshot.results[0].rank == 1
     assert saved['snapshot'].results[1].ticker == '2454'
@@ -80,3 +81,54 @@ def test_generate_daily_screening_uses_market_fallback_when_db_loader_fails():
     )
 
     assert snapshot.results[0].ticker == '2330'
+
+
+def test_generate_daily_screening_supports_independent_strategy_snapshots():
+    contexts = {
+        'GROWTH': make_context('GROWTH', '120', ['120', '119', '118', '117', '116', '114', '112', '111', '110', '108'], '30.0', '12.0', '4.0'),
+        'VALUE': make_context('VALUE', '85', ['85', '84.5', '84', '83.5', '83', '82.8', '82.5', '82', '81.5', '81'], '8.0', '1.0', '8.0'),
+    }
+    saved = {}
+
+    growth_snapshot = generate_daily_screening(
+        ticker_loader=lambda: ['GROWTH', 'VALUE'],
+        context_loader=lambda ticker: contexts[ticker],
+        volume_loader=lambda ticker: {'GROWTH': 1200000, 'VALUE': 600000}[ticker],
+        pb_ratio_loader=lambda ticker: {'GROWTH': Decimal('6.0'), 'VALUE': Decimal('1.1')}[ticker],
+        strategy='growth',
+        snapshot_saver=lambda snapshot: saved.setdefault(snapshot.strategy_key, snapshot),
+    )
+    value_snapshot = generate_daily_screening(
+        ticker_loader=lambda: ['GROWTH', 'VALUE'],
+        context_loader=lambda ticker: contexts[ticker],
+        volume_loader=lambda ticker: {'GROWTH': 1200000, 'VALUE': 600000}[ticker],
+        pb_ratio_loader=lambda ticker: {'GROWTH': Decimal('6.0'), 'VALUE': Decimal('1.1')}[ticker],
+        strategy='value',
+        snapshot_saver=lambda snapshot: saved.setdefault(snapshot.strategy_key, snapshot),
+    )
+
+    assert growth_snapshot.strategy_key == 'growth'
+    assert growth_snapshot.results[0].ticker == 'GROWTH'
+    assert value_snapshot.strategy_key == 'value'
+    assert value_snapshot.results[0].ticker == 'VALUE'
+    assert set(saved) == {'growth', 'value'}
+
+
+def test_generate_all_daily_screenings_persists_one_snapshot_per_strategy():
+    contexts = {
+        'GROWTH': make_context('GROWTH', '120', ['120', '119', '118', '117', '116', '114', '112', '111', '110', '108'], '30.0', '12.0', '4.0'),
+        'VALUE': make_context('VALUE', '85', ['85', '84.5', '84', '83.5', '83', '82.8', '82.5', '82', '81.5', '81'], '8.0', '1.0', '8.0'),
+    }
+    saved = []
+
+    snapshots = generate_all_daily_screenings(
+        ticker_loader=lambda: ['GROWTH', 'VALUE'],
+        context_loader=lambda ticker: contexts[ticker],
+        volume_loader=lambda ticker: {'GROWTH': 1200000, 'VALUE': 600000}[ticker],
+        pb_ratio_loader=lambda ticker: {'GROWTH': Decimal('6.0'), 'VALUE': Decimal('1.1')}[ticker],
+        snapshot_saver=lambda snapshot: saved.append(snapshot),
+        strategy_keys=['balanced', 'growth', 'value'],
+    )
+
+    assert [snapshot.strategy_key for snapshot in snapshots] == ['balanced', 'growth', 'value']
+    assert [snapshot.strategy_key for snapshot in saved] == ['balanced', 'growth', 'value']

@@ -4,6 +4,7 @@ import json
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from ai_investment_analyst.analysis.screener import get_strategy_profile, list_strategy_profiles
 from ai_investment_analyst.config import settings
 from ai_investment_analyst.db.connection import get_connection
 
@@ -39,7 +40,31 @@ def _json_default(value: Any):
     raise TypeError(f'Unsupported JSON value: {type(value)!r}')
 
 
+def _serialize_strategy(strategy_key: str) -> dict[str, str]:
+    strategy = get_strategy_profile(strategy_key)
+    return {
+        'key': strategy.key,
+        'label': strategy.label,
+        'description': strategy.description,
+    }
+
+
+def _list_serialized_strategies() -> list[dict[str, str]]:
+    return [
+        {
+            'key': strategy.key,
+            'label': strategy.label,
+            'description': strategy.description,
+        }
+        for strategy in list_strategy_profiles()
+    ]
+
+
 def save_screening_snapshot(snapshot: DailyScreeningSnapshot) -> str:
+    criteria = {
+        'strategy_key': snapshot.strategy_key,
+        'strategy': _serialize_strategy(snapshot.strategy_key),
+    }
     with get_connection() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -55,7 +80,7 @@ def save_screening_snapshot(snapshot: DailyScreeningSnapshot) -> str:
                 snapshot.universe_size,
                 snapshot.candidate_count,
                 'completed',
-                json.dumps({}, ensure_ascii=False),
+                json.dumps(criteria, ensure_ascii=False),
             ),
         )
         run_id = cur.fetchone()[0]
@@ -81,21 +106,24 @@ def save_screening_snapshot(snapshot: DailyScreeningSnapshot) -> str:
     return run_id
 
 
-def load_latest_screener_snapshot() -> dict[str, Any] | None:
+def load_latest_screener_snapshot(strategy: str = 'balanced') -> dict[str, Any] | None:
+    strategy_profile = get_strategy_profile(strategy)
     with get_connection() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, run_date, generated_at, universe_size, candidate_count
+            SELECT id, run_date, generated_at, universe_size, candidate_count, criteria
             FROM screening_runs
             WHERE status = 'completed'
+              AND COALESCE(criteria->>'strategy_key', 'balanced') = %s
             ORDER BY generated_at DESC
             LIMIT 1
-            """
+            """,
+            (strategy_profile.key,),
         )
         run_row = cur.fetchone()
         if not run_row:
             return None
-        run_id, run_date, generated_at, universe_size, candidate_count = run_row
+        run_id, run_date, generated_at, universe_size, candidate_count, criteria = run_row
         cur.execute(
             """
             SELECT rank, ticker, total_score, close_price, factor_scores, reasons
@@ -118,10 +146,13 @@ def load_latest_screener_snapshot() -> dict[str, Any] | None:
         }
         for row in rows
     ]
+    strategy_payload = dict((criteria or {}).get('strategy') or _serialize_strategy(strategy_profile.key))
     return {
         'run_date': run_date.isoformat() if hasattr(run_date, 'isoformat') else str(run_date),
         'generated_at': generated_at.isoformat() if hasattr(generated_at, 'isoformat') else str(generated_at),
         'universe_size': universe_size,
         'candidate_count': candidate_count,
+        'strategy': strategy_payload,
+        'strategies': _list_serialized_strategies(),
         'results': results,
     }

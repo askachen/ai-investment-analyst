@@ -7,7 +7,7 @@ def test_latest_screener_api_returns_snapshot(monkeypatch):
     monkeypatch.setattr('ai_investment_analyst.web.app.resolve_screener_display_name', lambda ticker: {'2330': '台積電', '2454': '聯發科'}.get(ticker))
     monkeypatch.setattr(
         'ai_investment_analyst.web.app.load_latest_screener_snapshot',
-        lambda: {
+        lambda strategy='balanced': {
             'run_date': '2026-05-01',
             'generated_at': '2026-05-01T01:10:00+00:00',
             'results': [
@@ -133,31 +133,27 @@ def test_latest_screener_api_returns_empty_payload_when_store_fails(monkeypatch)
 
 
 def test_latest_screener_api_supports_strategy_reranking(monkeypatch):
+    calls = []
     monkeypatch.setattr('ai_investment_analyst.web.app.resolve_screener_display_name', lambda ticker: None)
     monkeypatch.setattr(
         'ai_investment_analyst.web.app.load_latest_screener_snapshot',
-        lambda: {
+        lambda strategy='balanced': calls.append(strategy) or {
             'run_date': '2026-05-01',
             'generated_at': '2026-05-01T01:10:00+00:00',
+            'strategy': {
+                'key': strategy,
+                'label': '價值穩健',
+                'description': 'value snapshot',
+            },
+            'strategies': [
+                {'key': 'balanced', 'label': '平衡多因子', 'description': 'balanced'},
+                {'key': 'value', 'label': '價值穩健', 'description': 'value'},
+            ],
             'results': [
                 {
                     'rank': 1,
-                    'ticker': 'GROWTH',
-                    'total_score': '72.00',
-                    'close_price': '120',
-                    'factor_scores': {
-                        'momentum': '60',
-                        'revenue': '100',
-                        'quality': '64',
-                        'valuation': '0',
-                        'liquidity': '2.4',
-                    },
-                    'reasons': ['growth'],
-                },
-                {
-                    'rank': 2,
                     'ticker': 'VALUE',
-                    'total_score': '68.00',
+                    'total_score': '88.00',
                     'close_price': '85',
                     'factor_scores': {
                         'momentum': '14',
@@ -177,6 +173,7 @@ def test_latest_screener_api_supports_strategy_reranking(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
+    assert calls == ['value']
     assert payload['strategy']['key'] == 'value'
     assert payload['results'][0]['ticker'] == 'VALUE'
     assert payload['results'][0]['rank'] == 1

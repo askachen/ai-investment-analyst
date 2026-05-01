@@ -6,7 +6,6 @@ import os
 from secrets import compare_digest
 from pathlib import Path
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -15,7 +14,7 @@ from pydantic import BaseModel, Field
 import requests
 import yfinance as yf
 
-from ai_investment_analyst.analysis.screener import calculate_total_score, get_strategy_profile, list_strategy_profiles
+from ai_investment_analyst.analysis.screener import get_strategy_profile, list_strategy_profiles
 from ai_investment_analyst.analysis.stock_report import candidate_market_tickers
 from ai_investment_analyst.analysis.stock_report import generate_stock_report
 from ai_investment_analyst.db.connection import get_connection
@@ -267,54 +266,6 @@ def _list_serialized_strategies() -> list[dict[str, str]]:
     ]
 
 
-def _parse_factor_score_map(factor_scores: dict[str, str] | None) -> dict[str, Decimal]:
-    parsed: dict[str, Decimal] = {}
-    for key, value in (factor_scores or {}).items():
-        try:
-            parsed[key] = Decimal(str(value))
-        except (InvalidOperation, TypeError, ValueError):
-            parsed[key] = Decimal('0')
-    return parsed
-
-
-def apply_strategy_to_snapshot(snapshot: dict, strategy_key: str) -> dict:
-    strategy = get_strategy_profile(strategy_key)
-    reranked_results = []
-    should_rerank = False
-    for result in snapshot.get('results', []):
-        item = dict(result)
-        item['_original_rank'] = int(item.get('rank') or len(reranked_results) + 1)
-        factor_scores = _parse_factor_score_map(item.get('factor_scores'))
-        if factor_scores:
-            should_rerank = True
-            item['total_score'] = str(calculate_total_score(factor_scores, strategy.weights))
-        reranked_results.append(item)
-
-    if should_rerank:
-        reranked_results.sort(
-            key=lambda item: (
-                Decimal(item.get('total_score') or '0'),
-                _parse_factor_score_map(item.get('factor_scores')).get('momentum', Decimal('0')),
-                item.get('ticker', ''),
-            ),
-            reverse=True,
-        )
-        for index, item in enumerate(reranked_results, start=1):
-            item['rank'] = index
-    else:
-        reranked_results.sort(key=lambda item: item['_original_rank'])
-
-    for item in reranked_results:
-        item.pop('_original_rank', None)
-
-    return {
-        **snapshot,
-        'strategy': _serialize_strategy(strategy.key),
-        'strategies': _list_serialized_strategies(),
-        'results': reranked_results,
-    }
-
-
 def get_web_login_username() -> str:
     return os.getenv('WEB_LOGIN_USERNAME', 'admin').strip() or 'admin'
 
@@ -454,7 +405,7 @@ def get_latest_screener(request: Request, strategy: str = 'balanced'):
     require_auth_for_api(request)
     active_strategy = get_strategy_profile(strategy)
     try:
-        snapshot = load_latest_screener_snapshot()
+        snapshot = load_latest_screener_snapshot(active_strategy.key)
     except Exception:
         snapshot = None
     if snapshot is None:
@@ -462,6 +413,7 @@ def get_latest_screener(request: Request, strategy: str = 'balanced'):
             strategy=ScreenerStrategyResponse(**_serialize_strategy(active_strategy.key)),
             strategies=[ScreenerStrategyResponse(**item) for item in _list_serialized_strategies()],
         )
-    strategy_snapshot = apply_strategy_to_snapshot(snapshot, active_strategy.key)
-    return ScreenerSnapshotResponse(**enrich_screener_snapshot(strategy_snapshot))
-
+    enriched_snapshot = enrich_screener_snapshot(snapshot)
+    enriched_snapshot.setdefault('strategy', _serialize_strategy(active_strategy.key))
+    enriched_snapshot.setdefault('strategies', _list_serialized_strategies())
+    return ScreenerSnapshotResponse(**enriched_snapshot)

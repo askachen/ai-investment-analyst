@@ -104,7 +104,7 @@ def test_authenticated_user_can_access_screener_api(monkeypatch):
     monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
     monkeypatch.setattr(
         'ai_investment_analyst.web.app.load_latest_screener_snapshot',
-        lambda: {'run_date': '2026-05-01', 'generated_at': '2026-05-01T01:10:00+00:00', 'results': []},
+        lambda strategy='balanced': {'run_date': '2026-05-01', 'generated_at': '2026-05-01T01:10:00+00:00', 'results': []},
     )
 
     client = TestClient(app)
