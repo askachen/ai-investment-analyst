@@ -6,8 +6,14 @@ from ai_investment_analyst.web.app import app
 MOCK_REPORT = """【個股分析報告】2330
 投資評級：買進
 信心等級：高
-重點摘要
+一句話投資主軸
 台積電測試摘要
+估值觀察
+本益比已反映部分成長預期。
+評價標籤：偏高
+合理價區間：約 950 - 1,080 元。
+目標價推導
+以 Base Case 45 元 EPS 與 22 倍本益比推估，目標價約 990 元。
 分析師觀點
 AI 需求延續。"""
 
@@ -24,6 +30,10 @@ def test_stock_detail_page_renders_report_with_traditional_chinese_name(monkeypa
     assert '返回推薦榜單' in response.text
     assert '台積電測試摘要' in response.text
     assert 'AI 需求延續。' in response.text
+    assert '投資重點速覽' in response.text
+    assert '評價標籤' in response.text
+    assert '合理價區間：約 950 - 1,080 元。' in response.text
+    assert '目標價約 990 元。' in response.text
 
 
 def test_stock_detail_page_uses_ticker_when_name_missing(monkeypatch):

@@ -122,10 +122,34 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
 
     flush_section()
 
+    insight_cards: list[tuple[str, str]] = []
+    for heading, items in sections:
+        paragraph_items = [item for item in items if not item.startswith('- ')]
+        if heading == '一句話投資主軸' and paragraph_items:
+            insight_cards.append(('投資主軸', paragraph_items[0]))
+        elif heading == '估值觀察':
+            for item in paragraph_items:
+                if item.startswith('評價標籤：'):
+                    insight_cards.append(('評價標籤', item.removeprefix('評價標籤：').strip()))
+                elif item.startswith('合理價區間：'):
+                    insight_cards.append(('合理價區間', item))
+        elif heading == '目標價推導' and paragraph_items:
+            insight_cards.append(('目標價推導', paragraph_items[0]))
+
     body_parts: list[str] = [f'<article class="report-card"><header class="report-header"><h1>{escape(title)}</h1>']
     if badges:
         body_parts.append(f'<div class="report-badges">{"".join(badges)}</div>')
     body_parts.append('</header>')
+
+    if insight_cards:
+        body_parts.append('<section class="report-insights" aria-label="投資重點速覽">')
+        body_parts.append('<div class="report-insights-title">投資重點速覽</div>')
+        body_parts.append('<div class="report-insights-grid">')
+        for label, value in insight_cards:
+            body_parts.append(
+                f'<article class="insight-card"><span class="insight-label">{escape(label)}</span><strong>{escape(value)}</strong></article>'
+            )
+        body_parts.append('</div></section>')
 
     if len(sections) > 1:
         body_parts.append('<nav class="report-nav" aria-label="報告章節快速導覽"><span class="report-nav-label">快速導覽</span><div class="report-nav-links">')

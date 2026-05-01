@@ -72,6 +72,14 @@ AI 需求推升先進製程報價與產能利用率。
 - 短中期動能穩定。
 - 現金流與獲利能力同步改善。
 
+估值觀察
+本益比已位於區間上緣。
+評價標籤：偏高
+合理價區間：約 950 - 1,080 元。
+
+目標價推導
+以 Base Case 45 元 EPS 與 22 倍本益比推估，目標價約 990 元。
+
 潛在風險
 - 若終端需求放緩，評價可能壓縮。"""
 
@@ -82,3 +90,8 @@ AI 需求推升先進製程報價與產能利用率。
     assert '<a href="#section-2">重點摘要</a>' in html
     assert '<section id="section-1" class="report-section report-section-lead">' in html
     assert '<p class="lead-paragraph">AI 需求推升先進製程報價與產能利用率。</p>' in html
+    assert '<section class="report-insights" aria-label="投資重點速覽">' in html
+    assert '<span class="insight-label">評價標籤</span>' in html
+    assert '<strong>偏高</strong>' in html
+    assert '合理價區間：約 950 - 1,080 元。' in html
+    assert '目標價約 990 元。' in html
