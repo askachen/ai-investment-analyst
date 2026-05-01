@@ -1425,7 +1425,11 @@
                   </div>
                   <div class="summary-card">
                     <span class="summary-card-title">基本面重點</span>
-                    <div class="summary-card-body">${escapeHtml(reasons[1] || reasons[2] || '資料待補')}</div>
+                    <div class="summary-card-body">${escapeHtml(buildFundamentalSummary(reasons))}</div>
+                  </div>
+                  <div class="summary-card">
+                    <span class="summary-card-title">模型觀點</span>
+                    <div class="summary-card-body">${escapeHtml(buildModelSummary(reasons))}</div>
                   </div>
                 </div>
                 <div class="compact-meta-grid">

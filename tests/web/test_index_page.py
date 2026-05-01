@@ -36,6 +36,7 @@ def test_index_page_contains_form():
     assert 'No.' in response.text
     assert 'summary-grid' in response.text
     assert 'summary-card' in response.text
+    assert 'summary-card-title">模型觀點' in response.text
     assert 'detail-section' in response.text
     assert 'factor-meter' in response.text
     assert 'factor-meter-fill' in response.text
