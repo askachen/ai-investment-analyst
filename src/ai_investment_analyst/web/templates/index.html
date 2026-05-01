@@ -196,13 +196,27 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
-        border-radius: 999px;
-        background: rgba(96, 165, 250, 0.16);
-        color: #dbeafe;
-        font-weight: 800;
+        width: 52px;
+        height: 52px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(96, 165, 250, 0.14));
+        color: #eff6ff;
+        font-weight: 900;
         margin-bottom: 10px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .rank-value {
+        font-size: 28px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .stock-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
       }
 
       .stock-main {
@@ -224,6 +238,59 @@
         color: #f8fbff;
         font-size: 16px;
         font-weight: 700;
+      }
+
+      .score-details {
+        min-width: 120px;
+      }
+
+      .score-details summary {
+        list-style: none;
+      }
+
+      .score-details summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .score-badge {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 9px 12px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(96, 165, 250, 0.88));
+        color: white;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .score-badge strong {
+        font-size: 24px;
+        line-height: 1;
+      }
+
+      .score-panel {
+        margin-top: 10px;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(8, 19, 33, 0.92);
+        border: 1px solid rgba(96, 165, 250, 0.18);
+      }
+
+      .factor-explainer {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .factor-explainer p {
+        margin: 0 0 8px;
+      }
+
+      .factor-explainer p:last-child {
+        margin-bottom: 0;
       }
 
       .stock-main small {
@@ -310,7 +377,17 @@
       }
 
       .score-box {
-        min-width: 200px;
+        min-width: 180px;
+      }
+
+      .score-box-hint {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .score-box-hint strong {
+        color: #dbeafe;
       }
 
       .score-pill {
@@ -551,10 +628,17 @@
         }
 
         .stock-rank {
-          width: 24px;
-          height: 24px;
+          width: 42px;
+          height: 42px;
           margin-bottom: 4px;
-          font-size: 12px;
+        }
+
+        .rank-value {
+          font-size: 24px;
+        }
+
+        .stock-header {
+          display: block;
         }
 
         .stock-main {
@@ -568,6 +652,34 @@
 
         .stock-name {
           font-size: 13px;
+        }
+
+        .score-details {
+          margin-top: 8px;
+          min-width: 0;
+        }
+
+        .score-badge {
+          width: 100%;
+          justify-content: space-between;
+          padding: 7px 9px;
+          border-radius: 10px;
+          font-size: 11px;
+        }
+
+        .score-badge strong {
+          font-size: 19px;
+        }
+
+        .score-panel {
+          margin-top: 6px;
+          padding: 9px;
+          border-radius: 10px;
+        }
+
+        .factor-explainer {
+          font-size: 11px;
+          line-height: 1.35;
         }
 
         .stock-main small {
@@ -747,6 +859,36 @@
         }[key] || key;
       }
 
+      function formatDecimal(value, digits = 1) {
+        if (value === null || value === undefined || value === '') {
+          return 'N/A';
+        }
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) {
+          return String(value);
+        }
+        return numeric.toFixed(digits).replace(/\.0+$|(?<=\.[0-9]*[1-9])0+$/u, '');
+      }
+
+      function formatPrice(value) {
+        return formatDecimal(value, 2);
+      }
+
+      function buildFactorExplanation(key, value) {
+        const score = Number(value || 0);
+        const base = {
+          momentum: '看近 5 日與近 10 日漲幅；短線動能越強，分數越高。',
+          revenue: '看月營收年增與月增；成長越明顯，分數越高。',
+          quality: '看 EPS 是否為正且數值夠高；EPS 偏弱時容易接近 0 分。',
+          valuation: '看 PE / PB 是否仍在相對可接受區間；越便宜分數越高。',
+          liquidity: '看近 5 日平均成交量；量太小時流動性分數會偏低。',
+        }[key] || '依據該因子的原始資料計算。';
+        if (score <= 0) {
+          return `${base} 目前顯示 0 分，通常代表該因子偏弱、資料不足，或未達基本門檻。`;
+        }
+        return base;
+      }
+
       function buildMarketSummary(reasons) {
         return reasons[0] || '目前尚無額外盤面摘要。';
       }
@@ -772,43 +914,68 @@
         return entries.map(([key, value]) => `
           <div class="factor-chip">
             <span>${escapeHtml(factorLabel(key))}</span>
-            <span>${escapeHtml(value)}/100</span>
+            <span>${escapeHtml(formatDecimal(value))}/100</span>
           </div>
         `).join('');
+      }
+
+      function buildFactorExplanationList(factorScores) {
+        const entries = Object.entries(factorScores || {});
+        if (entries.length === 0) {
+          return '<div class="factor-explainer"><p>目前沒有足夠資料可拆解模型因子。</p></div>';
+        }
+        return `
+          <div class="factor-explainer">
+            <p>總分：綜合五個因子加權後的結果。權重為盤面 25%、營收 30%、品質 15%、估值 20%、流動性 10%。</p>
+            <p>為什麼會 0 分？通常代表該因子目前偏弱、資料不足，或沒有通過最低門檻。</p>
+            ${entries.map(([key, value]) => `<p><strong>${escapeHtml(factorLabel(key))} ${escapeHtml(formatDecimal(value))}/100：</strong>${escapeHtml(buildFactorExplanation(key, value))}</p>`).join('')}
+          </div>
+        `;
       }
 
       function buildScreenerTable(payload) {
         const rows = payload.results.slice(0, 12).map((item) => {
           const reasons = item.reasons || [];
           const reportUrl = buildReportUrl(item.ticker);
+          const totalScore = formatDecimal(item.total_score);
+          const closePrice = formatPrice(item.close_price);
           return `
             <tr>
               <td class="stock-cell" data-label="股票">
-                <a class="stock-link" href="${reportUrl}">
-                  <div class="stock-rank">${escapeHtml(item.rank)}</div>
-                  <div class="stock-main">
-                    <div class="stock-code">
-                      <span>${escapeHtml(item.ticker)}</span>
-                      ${item.display_name ? `<span class="stock-name">${escapeHtml(item.display_name)}</span>` : ''}
+                <div class="stock-rank"><span class="rank-value">${escapeHtml(item.rank)}</span></div>
+                <div class="stock-header">
+                  <a class="stock-link" href="${reportUrl}">
+                    <div class="stock-main">
+                      <div class="stock-code">
+                        <span>${escapeHtml(item.ticker)}</span>
+                        ${item.display_name ? `<span class="stock-name">${escapeHtml(item.display_name)}</span>` : ''}
+                      </div>
+                      <small>策略模型最新突破候選</small>
                     </div>
-                    <small>策略模型最新突破候選</small>
-                  </div>
-                  <span class="breakout-badge">最新突破</span>
-                  <div class="compact-topline">
-                    <span>模型分數 <strong>${escapeHtml(item.total_score)}</strong></span>
-                    <span>收盤價 <strong>${escapeHtml(item.close_price || 'N/A')}</strong></span>
-                  </div>
-                  <div class="compact-meta-grid">
-                    <div class="compact-meta-item"><span>盤面重點</span><strong>${escapeHtml(reasons[0] || '資料待補')}</strong></div>
-                    <div class="compact-meta-item"><span>基本面重點</span><strong>${escapeHtml(reasons[1] || reasons[2] || '資料待補')}</strong></div>
-                  </div>
-                  <div class="compact-score-note">${escapeHtml(buildModelSummary(reasons))}</div>
-                  <div class="compact-score-note">返回個股完整報告 →</div>
-                </a>
+                  </a>
+                  <details class="score-details">
+                    <summary class="score-badge"><span>模型分數</span><strong>${escapeHtml(totalScore)}</strong></summary>
+                    <div class="score-panel">
+                      ${buildFactorExplanationList(item.factor_scores)}
+                      <div class="factor-grid" style="margin-top: 10px;">${buildFactorChips(item.factor_scores)}</div>
+                    </div>
+                  </details>
+                </div>
+                <span class="breakout-badge">最新突破</span>
+                <div class="compact-topline">
+                  <span>收盤價 <strong>${escapeHtml(closePrice)}</strong></span>
+                  <span>完整報告 <strong>→</strong></span>
+                </div>
+                <div class="compact-meta-grid">
+                  <div class="compact-meta-item"><span>盤面重點</span><strong>${escapeHtml(reasons[0] || '資料待補')}</strong></div>
+                  <div class="compact-meta-item"><span>基本面重點</span><strong>${escapeHtml(reasons[1] || reasons[2] || '資料待補')}</strong></div>
+                </div>
+                <div class="compact-score-note">${escapeHtml(buildModelSummary(reasons))}</div>
+                <a class="stock-link compact-score-note" href="${reportUrl}">返回個股完整報告 →</a>
               </td>
               <td data-label="盤面">
                 <div class="metric-card">
-                  <div class="metric-row"><span class="metric-label">收盤價</span><span class="metric-value">${escapeHtml(item.close_price || 'N/A')}</span></div>
+                  <div class="metric-row"><span class="metric-label">收盤價</span><span class="metric-value">${escapeHtml(closePrice)}</span></div>
                   <div class="market-summary">${escapeHtml(buildMarketSummary(reasons))}</div>
                 </div>
               </td>
@@ -818,10 +985,7 @@
                 </div>
               </td>
               <td class="score-box" data-label="模型">
-                <div class="score-pill"><span>模型分數</span><strong>${escapeHtml(item.total_score)}</strong></div>
-                <div class="score-note">${escapeHtml(buildModelSummary(reasons))}</div>
-                <div class="compact-score-note">${escapeHtml(buildModelSummary(reasons))}</div>
-                <div class="factor-grid" style="margin-top: 12px;">${buildFactorChips(item.factor_scores)}</div>
+                <div class="score-box-hint"><strong>點左側模型分數</strong> 可展開五個因子分數、權重與 0 分原因。</div>
               </td>
             </tr>
           `;

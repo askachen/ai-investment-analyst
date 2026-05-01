@@ -25,12 +25,20 @@ def test_index_page_contains_form():
     assert 'compact-meta-grid' in response.text
     assert 'stock-name' in response.text
     assert 'stock-link' in response.text
+    assert 'rank-value' in response.text
+    assert 'score-badge' in response.text
+    assert 'score-details' in response.text
+    assert 'factor-explainer' in response.text
     assert 'action="/logout"' not in response.text
     assert "fetch('/api/screener/latest')" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
     assert 'submitButton.disabled = true;' in response.text
     assert 'submitButton.disabled = false;' in response.text
     assert 'result.innerHTML = payload.report_html;' in response.text
+    assert 'function formatDecimal(value, digits = 1)' in response.text
+    assert 'function buildFactorExplanation(key, value)' in response.text
     assert 'function buildReportUrl(ticker)' in response.text
+    assert '總分：綜合五個因子加權後的結果' in response.text
+    assert '為什麼會 0 分？通常代表該因子目前偏弱' in response.text
     assert '返回個股完整報告' in response.text
     assert 'function buildScreenerTable(payload)' in response.text

@@ -57,6 +57,23 @@ def test_resolve_screener_display_name_falls_back_to_db_local_name(monkeypatch):
     assert resolve_screener_display_name('3406') == '玉晶光'
 
 
+def test_resolve_stock_name_prefers_db_local_name_before_yfinance(monkeypatch):
+    monkeypatch.setattr('ai_investment_analyst.web.app.lookup_taiwan_stock_name', lambda ticker: None)
+    monkeypatch.setattr('ai_investment_analyst.web.app.load_symbol_display_name_from_db', lambda ticker: '台積電' if ticker == '2330' else None)
+    monkeypatch.setattr('ai_investment_analyst.web.app.candidate_market_tickers', lambda ticker: [ticker, f'{ticker}.TW'])
+
+    class DummyTicker:
+        @property
+        def info(self):
+            return {'shortName': 'Taiwan Semiconductor Manufacturing Co.'}
+
+    monkeypatch.setattr('ai_investment_analyst.web.app.yf.Ticker', lambda ticker: DummyTicker())
+
+    from ai_investment_analyst.web.app import resolve_stock_name
+
+    assert resolve_stock_name('2330') == '台積電'
+
+
 def test_latest_screener_api_returns_empty_payload_when_missing(monkeypatch):
     monkeypatch.setattr('ai_investment_analyst.web.app.load_latest_screener_snapshot', lambda: None)
 

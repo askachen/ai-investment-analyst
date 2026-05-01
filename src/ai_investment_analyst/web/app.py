@@ -140,6 +140,9 @@ def resolve_stock_name(ticker: str) -> str | None:
         chinese_name = lookup_taiwan_stock_name(ticker)
         if chinese_name:
             return chinese_name
+        db_name = load_symbol_display_name_from_db(ticker)
+        if db_name:
+            return db_name
     candidates = candidate_market_tickers(ticker)
     if ticker.isdigit():
         tw_symbol = f'{ticker}.TW'
