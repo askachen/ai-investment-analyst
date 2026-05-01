@@ -326,6 +326,29 @@ def index(request: Request):
     )
 
 
+@app.get('/stocks/{ticker}', response_class=HTMLResponse)
+def stock_detail_page(request: Request, ticker: str):
+    auth_redirect = require_auth_for_page(request)
+    if auth_redirect:
+        return auth_redirect
+
+    normalized_ticker = ticker.strip()
+    report = generate_stock_report(normalized_ticker)
+    stock_name = resolve_stock_name(normalized_ticker)
+    display_title = f'{normalized_ticker} {stock_name}' if stock_name else normalized_ticker
+    report_html = render_report_html(report, display_title=display_title)
+    return TEMPLATES.TemplateResponse(
+        request,
+        'stock_detail.html',
+        {
+            'ticker': normalized_ticker,
+            'display_title': display_title,
+            'report_html': report_html,
+            'show_logout': is_auth_enabled() and is_authenticated(request),
+        },
+    )
+
+
 @app.post('/api/report', response_model=ReportResponse)
 def create_report(payload: ReportRequest, request: Request):
     require_auth_for_api(request)

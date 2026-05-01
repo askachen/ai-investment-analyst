@@ -141,3 +141,13 @@ def test_logout_clears_session_and_redirects(monkeypatch):
     assert response.status_code == 303
     assert response.headers['location'] == '/login'
     assert 'session=""' in response.headers['set-cookie'] or 'session=' in response.headers['set-cookie']
+
+
+def test_stock_detail_page_requires_login_when_auth_enabled(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
+
+    client = TestClient(app)
+    response = client.get('/stocks/2330', follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers['location'] == '/login'

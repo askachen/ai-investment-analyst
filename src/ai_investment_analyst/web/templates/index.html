@@ -175,6 +175,23 @@
         min-width: 220px;
       }
 
+      .stock-link {
+        display: block;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .stock-link:hover .stock-main,
+      .stock-link:focus-visible .stock-main {
+        color: #bfdbfe;
+      }
+
+      .stock-link:focus-visible {
+        outline: 2px solid rgba(96, 165, 250, 0.7);
+        outline-offset: 4px;
+        border-radius: 14px;
+      }
+
       .stock-rank {
         display: inline-flex;
         align-items: center;
@@ -226,6 +243,14 @@
         color: #fecdd3;
         font-size: 12px;
         font-weight: 700;
+      }
+
+      .compact-topline {
+        display: none;
+      }
+
+      .compact-meta-grid {
+        display: none;
       }
 
       .metric-card {
@@ -400,18 +425,18 @@
 
       @media (max-width: 768px) {
         .page {
-          padding: 14px 10px 28px;
+          padding: 10px 8px 24px;
         }
 
         .hero,
         .panel,
         .report-shell {
-          padding: 16px;
-          border-radius: 18px;
+          padding: 14px;
+          border-radius: 16px;
         }
 
         .hero-top {
-          gap: 12px;
+          gap: 10px;
         }
 
         .hero-actions {
@@ -419,48 +444,48 @@
           align-items: stretch;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 8px;
           margin-left: 0;
         }
 
         .hero-badges {
-          gap: 8px;
+          gap: 6px;
           justify-content: flex-start;
         }
 
         .hero-badge,
         .logout-button {
-          padding: 7px 11px;
-          font-size: 12px;
+          padding: 6px 10px;
+          font-size: 11px;
         }
 
         .dashboard {
-          margin-bottom: 14px;
-          border-radius: 18px;
+          margin-bottom: 12px;
+          border-radius: 16px;
         }
 
         .dashboard-header {
           align-items: flex-start;
           flex-direction: column;
-          gap: 10px;
-          padding: 14px 16px;
+          gap: 8px;
+          padding: 12px 14px;
         }
 
         .dashboard-header h2 {
-          font-size: 20px;
+          font-size: 18px;
         }
 
         .dashboard-subtitle,
         .muted {
-          font-size: 12px;
+          font-size: 11px;
         }
 
         .legend {
-          gap: 8px;
+          gap: 6px;
         }
 
         .legend span {
-          font-size: 11px;
+          font-size: 10px;
         }
 
         .screener-table,
@@ -491,20 +516,20 @@
 
         .screener-table tbody {
           display: grid;
-          gap: 10px;
-          padding: 10px;
+          gap: 8px;
+          padding: 8px;
         }
 
         .screener-table tbody tr {
           border: 1px solid var(--line);
-          border-radius: 14px;
+          border-radius: 12px;
           overflow: hidden;
           background: rgba(255, 255, 255, 0.03);
         }
 
         .screener-table tbody td {
           border-top: 1px solid var(--line);
-          padding: 10px 12px;
+          padding: 8px 10px;
         }
 
         .screener-table tbody td:first-child {
@@ -514,9 +539,9 @@
         .screener-table tbody td::before {
           content: attr(data-label);
           display: block;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
           color: var(--muted);
-          font-size: 11px;
+          font-size: 10px;
           letter-spacing: 0.05em;
         }
 
@@ -526,59 +551,102 @@
         }
 
         .stock-rank {
-          width: 28px;
-          height: 28px;
-          margin-bottom: 6px;
-          font-size: 13px;
-        }
-
-        .stock-main {
-          gap: 2px;
-          font-size: 18px;
-        }
-
-        .stock-name {
-          font-size: 14px;
-        }
-
-        .stock-main small {
-          margin-top: 2px;
+          width: 24px;
+          height: 24px;
+          margin-bottom: 4px;
           font-size: 12px;
         }
 
-        .breakout-badge {
-          margin-top: 8px;
-          padding: 4px 8px;
+        .stock-main {
+          gap: 1px;
+          font-size: 16px;
+        }
+
+        .stock-code {
+          gap: 6px;
+        }
+
+        .stock-name {
+          font-size: 13px;
+        }
+
+        .stock-main small {
+          margin-top: 1px;
           font-size: 11px;
+        }
+
+        .breakout-badge {
+          margin-top: 6px;
+          padding: 3px 7px;
+          font-size: 10px;
+        }
+
+        .compact-topline {
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          margin-top: 8px;
+          font-size: 11px;
+          color: var(--muted);
+        }
+
+        .compact-topline strong {
+          color: #f8fbff;
+          font-size: 12px;
+        }
+
+        .compact-meta-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px;
+          margin-top: 8px;
+        }
+
+        .compact-meta-item {
+          padding: 6px 7px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .compact-meta-item span {
+          display: block;
+          color: var(--muted);
+          font-size: 10px;
+          margin-bottom: 2px;
+        }
+
+        .compact-meta-item strong {
+          color: var(--white);
+          font-size: 12px;
         }
 
         .metric-card,
         .factor-grid {
-          gap: 8px;
+          gap: 6px;
         }
 
         .metric-row,
         .factor-chip {
-          font-size: 12px;
+          font-size: 11px;
         }
 
         .market-summary,
         .fundamental-summary {
-          margin-top: 6px;
-          padding: 9px 10px;
-          font-size: 12px;
-          line-height: 1.4;
+          margin-top: 4px;
+          padding: 8px 9px;
+          font-size: 11px;
+          line-height: 1.35;
         }
 
         .score-pill {
           width: 100%;
           justify-content: space-between;
-          padding: 8px 10px;
-          border-radius: 12px;
+          padding: 7px 9px;
+          border-radius: 10px;
         }
 
         .score-pill strong {
-          font-size: 22px;
+          font-size: 19px;
         }
 
         .score-note {
@@ -587,10 +655,10 @@
 
         .compact-score-note {
           display: block;
-          margin-top: 6px;
+          margin-top: 5px;
           color: var(--muted);
-          font-size: 12px;
-          line-height: 1.35;
+          font-size: 11px;
+          line-height: 1.3;
         }
       }
 
@@ -692,6 +760,10 @@
         return reasons[4] || reasons[5] || '模型綜合動能、營收、品質、估值與流動性進行排序。';
       }
 
+      function buildReportUrl(ticker) {
+        return `/stocks/${encodeURIComponent(ticker)}`;
+      }
+
       function buildFactorChips(factorScores) {
         const entries = Object.entries(factorScores || {});
         if (entries.length === 0) {
@@ -708,18 +780,31 @@
       function buildScreenerTable(payload) {
         const rows = payload.results.slice(0, 12).map((item) => {
           const reasons = item.reasons || [];
+          const reportUrl = buildReportUrl(item.ticker);
           return `
             <tr>
               <td class="stock-cell" data-label="股票">
-                <div class="stock-rank">${escapeHtml(item.rank)}</div>
-                <div class="stock-main">
-                  <div class="stock-code">
-                    <span>${escapeHtml(item.ticker)}</span>
-                    ${item.display_name ? `<span class="stock-name">${escapeHtml(item.display_name)}</span>` : ''}
+                <a class="stock-link" href="${reportUrl}">
+                  <div class="stock-rank">${escapeHtml(item.rank)}</div>
+                  <div class="stock-main">
+                    <div class="stock-code">
+                      <span>${escapeHtml(item.ticker)}</span>
+                      ${item.display_name ? `<span class="stock-name">${escapeHtml(item.display_name)}</span>` : ''}
+                    </div>
+                    <small>策略模型最新突破候選</small>
                   </div>
-                  <small>策略模型最新突破候選</small>
-                </div>
-                <span class="breakout-badge">最新突破</span>
+                  <span class="breakout-badge">最新突破</span>
+                  <div class="compact-topline">
+                    <span>模型分數 <strong>${escapeHtml(item.total_score)}</strong></span>
+                    <span>收盤價 <strong>${escapeHtml(item.close_price || 'N/A')}</strong></span>
+                  </div>
+                  <div class="compact-meta-grid">
+                    <div class="compact-meta-item"><span>盤面重點</span><strong>${escapeHtml(reasons[0] || '資料待補')}</strong></div>
+                    <div class="compact-meta-item"><span>基本面重點</span><strong>${escapeHtml(reasons[1] || reasons[2] || '資料待補')}</strong></div>
+                  </div>
+                  <div class="compact-score-note">${escapeHtml(buildModelSummary(reasons))}</div>
+                  <div class="compact-score-note">返回個股完整報告 →</div>
+                </a>
               </td>
               <td data-label="盤面">
                 <div class="metric-card">

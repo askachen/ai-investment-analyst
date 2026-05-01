@@ -21,11 +21,16 @@ def test_index_page_contains_form():
     assert 'overflow-x: hidden;' in response.text
     assert 'data-label="股票"' in response.text
     assert 'compact-score-note' in response.text
+    assert 'compact-topline' in response.text
+    assert 'compact-meta-grid' in response.text
     assert 'stock-name' in response.text
+    assert 'stock-link' in response.text
     assert 'action="/logout"' not in response.text
     assert "fetch('/api/screener/latest')" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
     assert 'submitButton.disabled = true;' in response.text
     assert 'submitButton.disabled = false;' in response.text
     assert 'result.innerHTML = payload.report_html;' in response.text
+    assert 'function buildReportUrl(ticker)' in response.text
+    assert '返回個股完整報告' in response.text
     assert 'function buildScreenerTable(payload)' in response.text
