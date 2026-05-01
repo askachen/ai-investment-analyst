@@ -100,6 +100,23 @@ python scripts/run_stock_screener.py 2330 2454 1101
 python scripts/run_stock_screener.py --min-revenue-yoy 5 --min-eps 1 --max-pe 25 --min-average-volume-5d 10000000 2330 2454 1101
 ```
 
+### 每日推薦排名（網站版）
+- 首頁會讀取 `GET /api/screener/latest` 顯示最新一批推薦股票排名。
+- 可先建立資料表：
+
+```bash
+python scripts/apply_daily_screener_schema.py
+```
+
+- 產生當日 snapshot：
+
+```bash
+python scripts/generate_daily_screener.py
+```
+
+- 若 `symbols` 資料表尚未完整建好，系統會 fallback 到內建的台股 ticker 清單；若 DB 型資料抓取失敗，也會改用 `yfinance` 即時資料盡量完成排序。
+- 可用環境變數 `SCREENING_TICKERS=2330,2454,2317,...` 覆蓋預設股票池。
+
 ### Screener 行為說明
 - **優先使用資料庫**：若 PostgreSQL 可連線，會優先讀 canonical 價格、月營收、財報摘要。
 - **DB 不可用時 fallback**：若資料庫無法連線，會自動改用 `yfinance` 即時價格與公開資訊繼續評分。

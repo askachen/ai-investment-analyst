@@ -16,6 +16,7 @@ import yfinance as yf
 
 from ai_investment_analyst.analysis.stock_report import candidate_market_tickers
 from ai_investment_analyst.analysis.stock_report import generate_stock_report
+from ai_investment_analyst.db.screener_store import load_latest_screener_snapshot
 
 app = FastAPI(title="AI Investment Analyst")
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -35,6 +36,23 @@ class ReportResponse(BaseModel):
     report_html: str
     mode: str
     generated_at: str
+
+
+class ScreenerResultResponse(BaseModel):
+    rank: int
+    ticker: str
+    total_score: str
+    reasons: list[str] = Field(default_factory=list)
+    close_price: str | None = None
+    factor_scores: dict[str, str] = Field(default_factory=dict)
+
+
+class ScreenerSnapshotResponse(BaseModel):
+    run_date: str | None = None
+    generated_at: str | None = None
+    universe_size: int | None = None
+    candidate_count: int | None = None
+    results: list[ScreenerResultResponse] = Field(default_factory=list)
 
 
 def render_report_html(report: str, display_title: str | None = None) -> str:
@@ -263,3 +281,16 @@ def create_report(payload: ReportRequest, request: Request):
         mode=mode,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
+
+
+@app.get('/api/screener/latest', response_model=ScreenerSnapshotResponse)
+def get_latest_screener(request: Request):
+    require_auth_for_api(request)
+    try:
+        snapshot = load_latest_screener_snapshot()
+    except Exception:
+        snapshot = None
+    if snapshot is None:
+        return ScreenerSnapshotResponse()
+    return ScreenerSnapshotResponse(**snapshot)
+

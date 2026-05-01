@@ -60,3 +60,30 @@ def test_authenticated_user_can_access_report_api(monkeypatch):
     response = client.post('/api/report', json={'ticker': '2330'})
     assert response.status_code == 200
     assert response.json()['report'] == 'mock report for 2330'
+
+
+def test_screener_api_requires_login_when_auth_enabled(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
+
+    client = TestClient(app)
+    response = client.get('/api/screener/latest')
+
+    assert response.status_code == 401
+    assert response.json() == {'detail': 'authentication required'}
+
+
+def test_authenticated_user_can_access_screener_api(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
+    monkeypatch.setattr(
+        'ai_investment_analyst.web.app.load_latest_screener_snapshot',
+        lambda: {'run_date': '2026-05-01', 'generated_at': '2026-05-01T01:10:00+00:00', 'results': []},
+    )
+
+    client = TestClient(app)
+    login_response = client.post('/login', data={'password': 'secret-pass'}, follow_redirects=False)
+
+    assert login_response.status_code == 303
+
+    response = client.get('/api/screener/latest')
+    assert response.status_code == 200
+    assert response.json()['run_date'] == '2026-05-01'

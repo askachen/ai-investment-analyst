@@ -12,6 +12,9 @@ def test_index_page_contains_form():
     assert '開始分析' in response.text
     assert '快速取得' not in response.text
     assert 'id="result-html"' in response.text
+    assert 'id="daily-screener"' in response.text
+    assert '今日推薦排名' in response.text
+    assert "fetch('/api/screener/latest')" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
     assert 'submitButton.disabled = true;' in response.text
     assert 'submitButton.disabled = false;' in response.text

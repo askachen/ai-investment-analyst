@@ -27,6 +27,14 @@
       .muted { color: var(--muted); font-size: 14px; }
       .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
       .report-card { display: grid; gap: 20px; }
+      .screener-list { display: grid; gap: 14px; }
+      .screener-item { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: #fbfdff; }
+      .screener-item-header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+      .screener-item h3 { margin: 0; font-size: 20px; }
+      .screener-score { color: var(--accent); font-weight: 700; }
+      .screener-meta { color: var(--muted); font-size: 14px; margin: 0 0 6px; }
+      .screener-item ul { margin: 0; padding-left: 20px; }
+      .screener-item li { margin-bottom: 6px; }
       .report-header h1 { margin: 0 0 8px; font-size: 32px; }
       .report-badges { display: flex; gap: 10px; flex-wrap: wrap; }
       .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 700; }
@@ -59,13 +67,54 @@
       </form>
       <p class="muted">本內容僅供參考，不構成投資建議。</p>
     </section>
+    <section class="panel">
+      <h2>今日推薦排名</h2>
+      <p class="muted">每天排程更新，顯示目前最新一批可解釋排序結果。</p>
+      <div id="daily-screener" class="placeholder">載入今日推薦中...</div>
+    </section>
     <section class="report-shell">
       <div id="result-html" class="placeholder">{% if result %}{{ result }}{% else %}尚未產生報告{% endif %}</div>
     </section>
     <script>
       const form = document.getElementById('report-form');
       const result = document.getElementById('result-html');
+      const screener = document.getElementById('daily-screener');
       const submitButton = form.querySelector('button[type="submit"]');
+
+      async function loadLatestScreener() {
+        try {
+          const response = await fetch('/api/screener/latest');
+          const payload = await response.json();
+          if (!response.ok) {
+            screener.innerHTML = '<div class="placeholder">目前無法載入今日推薦排名。</div>';
+            return;
+          }
+          if (!payload.results || payload.results.length === 0) {
+            screener.innerHTML = '<div class="placeholder">尚未產生今日推薦排名。</div>';
+            return;
+          }
+          const items = payload.results.slice(0, 10).map((item) => {
+            const reasons = (item.reasons || []).slice(0, 3).map((reason) => `<li>${reason}</li>`).join('');
+            return `
+              <article class="screener-item">
+                <div class="screener-item-header">
+                  <h3>${item.rank}. ${item.ticker}</h3>
+                  <span class="screener-score">總分 ${item.total_score}</span>
+                </div>
+                <p class="screener-meta">收盤價：${item.close_price || 'N/A'}</p>
+                <ul>${reasons}</ul>
+              </article>
+            `;
+          }).join('');
+          screener.innerHTML = `
+            <div class="muted">最新更新：${payload.run_date || 'N/A'} ${payload.generated_at || ''}</div>
+            <div class="screener-list">${items}</div>
+          `;
+        } catch (error) {
+          screener.innerHTML = '<div class="placeholder">目前無法載入今日推薦排名。</div>';
+        }
+      }
+
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const ticker = document.getElementById('ticker').value;
@@ -89,6 +138,8 @@
           submitButton.textContent = '開始分析';
         }
       });
+
+      loadLatestScreener();
     </script>
   </body>
 </html>

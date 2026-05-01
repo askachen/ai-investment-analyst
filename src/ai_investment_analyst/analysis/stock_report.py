@@ -186,6 +186,7 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
 
 def load_market_context_from_yfinance(ticker: str, limit: int = 10) -> StockReportContext:
     points: list[PricePoint] = []
+    latest_revenue = None
     latest_financial_summary = None
     for candidate in candidate_market_tickers(ticker):
         yf_ticker = yf.Ticker(candidate)
@@ -206,6 +207,16 @@ def load_market_context_from_yfinance(ticker: str, limit: int = 10) -> StockRepo
         trailing_revenue = info.get("totalRevenue")
         trailing_net_income = info.get("netIncomeToCommon")
         trailing_eps = info.get("trailingEps")
+        revenue_growth = info.get("revenueGrowth")
+        if revenue_growth is None:
+            revenue_growth = info.get("quarterlyRevenueGrowth")
+        if trailing_revenue is not None or revenue_growth is not None:
+            latest_revenue = RevenuePoint(
+                revenue_period="live-info",
+                revenue=Decimal(str(trailing_revenue)) if trailing_revenue is not None else None,
+                revenue_month_change_percent=Decimal("0") if revenue_growth is not None else None,
+                revenue_year_change_percent=Decimal(str(revenue_growth)) * Decimal("100") if revenue_growth is not None else None,
+            )
         if any(value is not None for value in [trailing_revenue, trailing_net_income, trailing_eps]):
             latest_financial_summary = FinancialSummary(
                 report_date="live-info",
@@ -219,7 +230,7 @@ def load_market_context_from_yfinance(ticker: str, limit: int = 10) -> StockRepo
         ticker=ticker,
         latest=points[0] if points else None,
         recent_prices=points,
-        latest_revenue=None,
+        latest_revenue=latest_revenue,
         latest_financial_summary=latest_financial_summary,
     )
 
