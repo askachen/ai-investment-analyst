@@ -336,10 +336,10 @@
         align-items: baseline;
         gap: 8px;
         flex-wrap: wrap;
-        color: #c6d7ee;
-        font-size: 18px;
-        font-weight: 800;
-        letter-spacing: -0.01em;
+        color: #eaf2ff;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
       }
 
       .stock-code {
@@ -416,23 +416,20 @@
         font-weight: 600;
       }
 
-      .breakout-badge {
-        display: inline-flex;
-        margin-top: 12px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: var(--rose-soft);
-        color: #fecdd3;
-        font-size: 12px;
-        font-weight: 700;
-      }
-
       .compact-topline {
         display: none;
       }
 
-      .compact-meta-grid {
-        display: none;
+      .report-entry-link {
+        color: #dbeafe;
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .report-entry-link:hover,
+      .report-entry-link:focus-visible {
+        color: #ffffff;
       }
 
       .summary-grid {
@@ -497,8 +494,10 @@
 
       .metric-value {
         color: var(--white);
-        font-weight: 700;
+        font-weight: 800;
         text-align: right;
+        font-size: 22px;
+        line-height: 1.1;
       }
 
       .market-summary,
@@ -615,10 +614,6 @@
         margin-top: 10px;
         color: var(--muted);
         font-size: 13px;
-      }
-
-      .compact-score-note {
-        display: none;
       }
 
       .panel,
@@ -927,7 +922,7 @@
 
         .stock-secondary-code {
           gap: 6px;
-          font-size: 20px;
+          font-size: 24px;
         }
 
         .stock-code {
@@ -980,6 +975,7 @@
         .compact-topline {
           display: flex;
           justify-content: space-between;
+          align-items: center;
           gap: 8px;
           margin-top: 8px;
           font-size: 11px;
@@ -988,14 +984,17 @@
 
         .compact-topline strong {
           color: #f8fbff;
-          font-size: 12px;
+          font-size: 24px;
+          line-height: 1;
         }
 
-        .compact-meta-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 6px;
-          margin-top: 8px;
+        .compact-topline .metric-label {
+          font-size: 11px;
+          color: var(--muted);
+        }
+
+        .report-entry-link {
+          font-size: 12px;
         }
 
         .summary-grid {
@@ -1072,6 +1071,10 @@
           font-size: 11px;
         }
 
+        .metric-value {
+          font-size: 26px;
+        }
+
         .market-summary,
         .fundamental-summary {
           margin-top: 4px;
@@ -1095,13 +1098,6 @@
           display: none;
         }
 
-        .compact-score-note {
-          display: block;
-          margin-top: 5px;
-          color: var(--muted);
-          font-size: 11px;
-          line-height: 1.3;
-        }
       }
 
       @media (max-width: 640px) {
@@ -1390,7 +1386,7 @@
           const secondaryCode = item.display_name ? item.ticker : '台股代號';
           return `
             <tr>
-              <td class="stock-cell" data-label="股票">
+              <td class="stock-cell" data-label="">
                 <div class="stock-rank-row">
                   <div class="stock-rank"><span class="rank-value">${escapeHtml(item.rank)}</span></div>
                   <div class="stock-rank-label">
@@ -1402,7 +1398,6 @@
                   <a class="stock-link" href="${reportUrl}">
                     <div class="stock-main">
                       <div class="stock-primary-name">${escapeHtml(primaryName)}</div>
-                      <small>策略模型最新突破候選</small>
                     </div>
                   </a>
                   <details class="score-details">
@@ -1413,10 +1408,12 @@
                     </div>
                   </details>
                 </div>
-                <span class="breakout-badge">最新突破</span>
                 <div class="compact-topline">
-                  <span>收盤價 <strong>${escapeHtml(closePrice)}</strong></span>
-                  <span>完整報告 <strong>→</strong></span>
+                  <div>
+                    <span class="metric-label">收盤價</span>
+                    <strong>${escapeHtml(closePrice)}</strong>
+                  </div>
+                  <a class="report-entry-link" href="${reportUrl}">進入完整報告</a>
                 </div>
                 <div class="summary-grid">
                   <div class="summary-card">
@@ -1427,14 +1424,6 @@
                     <span class="summary-card-title">基本面重點</span>
                     <div class="summary-card-body">${escapeHtml(buildFundamentalSummary(reasons))}</div>
                   </div>
-                  <div class="summary-card">
-                    <span class="summary-card-title">模型觀點</span>
-                    <div class="summary-card-body">${escapeHtml(buildModelSummary(reasons))}</div>
-                  </div>
-                </div>
-                <div class="compact-meta-grid">
-                  <div class="compact-meta-item"><span>流動性</span><strong>${escapeHtml(reasons[4] || '資料待補')}</strong></div>
-                  <div class="compact-meta-item"><span>完整報告</span><strong>返回個股完整報告 →</strong></div>
                 </div>
                 <div class="detail-section">
                   <span class="detail-section-title">盤面</span>
@@ -1447,10 +1436,6 @@
                   <span class="detail-section-title">基本面</span>
                   <div class="fundamental-summary">${escapeHtml(buildFundamentalSummary(reasons))}</div>
                 </div>
-                <div class="detail-section">
-                  <span class="detail-section-title">模型</span>
-                </div>
-                <a class="stock-link compact-score-note" href="${reportUrl}">返回個股完整報告 →</a>
               </td>
               <td data-label="盤面">
                 <div class="metric-card">

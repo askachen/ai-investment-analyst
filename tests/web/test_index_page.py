@@ -19,10 +19,9 @@ def test_index_page_contains_form():
     assert '模型' in response.text
     assert '@media (max-width: 768px)' in response.text
     assert 'overflow-x: hidden;' in response.text
-    assert 'data-label="股票"' in response.text
-    assert 'compact-score-note' in response.text
+    assert 'data-label=""' in response.text
+    assert 'compact-score-note' not in response.text
     assert 'compact-topline' in response.text
-    assert 'compact-meta-grid' in response.text
     assert 'stock-name' in response.text
     assert 'stock-link' in response.text
     assert 'rank-value' in response.text
@@ -36,7 +35,6 @@ def test_index_page_contains_form():
     assert 'No.' in response.text
     assert 'summary-grid' in response.text
     assert 'summary-card' in response.text
-    assert 'summary-card-title">模型觀點' in response.text
     assert 'detail-section' in response.text
     assert 'factor-meter' in response.text
     assert 'factor-meter-fill' in response.text
@@ -68,5 +66,12 @@ def test_index_page_contains_form():
     assert '點左側模型分數 可展開五個因子分數、權重與 0 分原因。' not in response.text
     assert '總分：綜合五個因子加權後的結果' in response.text
     assert '為什麼會 0 分？通常代表該因子目前偏弱' in response.text
-    assert '返回個股完整報告' in response.text
+    assert '策略模型最新突破候選' not in response.text
+    assert '最新突破' not in response.text
+    assert '完整報告 <strong>→</strong>' not in response.text
+    assert '返回個股完整報告' not in response.text
+    assert 'summary-card-title">模型觀點' not in response.text
+    assert 'compact-meta-grid' not in response.text
+    assert '<span class="detail-section-title">模型</span>' not in response.text
+    assert '進入完整報告' in response.text
     assert 'function buildScreenerTable(payload)' in response.text
