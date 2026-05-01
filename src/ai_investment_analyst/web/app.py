@@ -125,8 +125,10 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
     flush_section()
 
     insight_cards: list[tuple[str, str]] = []
+    scenario_sections: list[tuple[str, list[str], list[str]]] = []
     for heading, items in sections:
         paragraph_items = [item for item in items if not item.startswith('- ')]
+        bullet_items = [item[2:] for item in items if item.startswith('- ')]
         if heading == '一句話投資主軸' and paragraph_items:
             insight_cards.append(('投資主軸', paragraph_items[0]))
         elif heading == '估值觀察':
@@ -137,6 +139,8 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
                     insight_cards.append(('合理價區間', item))
         elif heading == '目標價推導' and paragraph_items:
             insight_cards.append(('目標價推導', paragraph_items[0]))
+        elif heading in {'Bull Case', 'Base Case', 'Bear Case'}:
+            scenario_sections.append((heading, bullet_items, paragraph_items))
 
     def _extract_financial_snapshot_cards(items: list[str]) -> list[tuple[str, str]]:
         cards: list[tuple[str, str]] = []
@@ -180,6 +184,14 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
             body_parts.append(
                 f'<article class="insight-card"><span class="insight-label">{escape(label)}</span><strong>{escape(value)}</strong></article>'
             )
+        body_parts.append('</div></section>')
+
+    if scenario_sections:
+        body_parts.append('<section class="scenario-overview" aria-label="三種情境推演">')
+        body_parts.append('<div class="scenario-overview-title">三種情境推演</div>')
+        body_parts.append('<div class="scenario-grid scenario-grid-overview">')
+        for heading, bullet_items, paragraph_items in scenario_sections:
+            body_parts.append(_render_scenario_card(heading, bullet_items, paragraph_items))
         body_parts.append('</div></section>')
 
     if len(sections) > 1:

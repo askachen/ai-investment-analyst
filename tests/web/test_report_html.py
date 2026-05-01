@@ -127,7 +127,9 @@ Bear Case
     assert '<article class="financial-snapshot-card">' in html
     assert '<span class="financial-snapshot-label">營收</span>' in html
     assert '<strong class="financial-snapshot-value">6500.00 億元</strong>' in html
-    assert '<div class="scenario-grid">' in html
+    assert '<section class="scenario-overview" aria-label="三種情境推演">' in html
+    assert '<div class="scenario-overview-title">三種情境推演</div>' in html
+    assert '<div class="scenario-grid scenario-grid-overview">' in html
     assert '<article class="scenario-card scenario-card-bull">' in html
     assert '<article class="scenario-card scenario-card-base">' in html
     assert '<article class="scenario-card scenario-card-bear">' in html
