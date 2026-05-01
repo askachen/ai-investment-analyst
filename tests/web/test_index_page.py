@@ -20,6 +20,9 @@ def test_index_page_contains_form():
     assert '@media (max-width: 768px)' in response.text
     assert 'overflow-x: hidden;' in response.text
     assert 'data-label="股票"' in response.text
+    assert 'compact-score-note' in response.text
+    assert 'stock-name' in response.text
+    assert 'action="/logout"' not in response.text
     assert "fetch('/api/screener/latest')" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
     assert 'submitButton.disabled = true;' in response.text

@@ -115,3 +115,29 @@ def test_authenticated_user_can_access_screener_api(monkeypatch):
     response = client.get('/api/screener/latest')
     assert response.status_code == 200
     assert response.json()['run_date'] == '2026-05-01'
+
+
+def test_authenticated_index_shows_logout_button(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_USERNAME', 'aska')
+    monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
+
+    client = TestClient(app)
+    client.post('/login', data={'username': 'aska', 'password': 'secret-pass'}, follow_redirects=False)
+    response = client.get('/')
+
+    assert response.status_code == 200
+    assert '登出' in response.text
+    assert 'action="/logout"' in response.text
+
+
+def test_logout_clears_session_and_redirects(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_USERNAME', 'aska')
+    monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
+
+    client = TestClient(app)
+    client.post('/login', data={'username': 'aska', 'password': 'secret-pass'}, follow_redirects=False)
+    response = client.post('/logout', follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers['location'] == '/login'
+    assert 'session=""' in response.headers['set-cookie'] or 'session=' in response.headers['set-cookie']

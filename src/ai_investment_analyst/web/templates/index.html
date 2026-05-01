@@ -66,6 +66,13 @@
         align-items: flex-start;
       }
 
+      .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-left: auto;
+      }
+
       .hero h1 {
         margin: 0 0 8px;
         font-size: 38px;
@@ -82,6 +89,21 @@
         gap: 10px;
         flex-wrap: wrap;
         justify-content: flex-end;
+      }
+
+      .logout-form {
+        margin: 0;
+      }
+
+      .logout-button {
+        padding: 9px 14px;
+        border: 1px solid rgba(251, 113, 133, 0.26);
+        border-radius: 999px;
+        background: rgba(251, 113, 133, 0.12);
+        color: #ffd4da;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
       }
 
       .hero-badge {
@@ -167,9 +189,24 @@
       }
 
       .stock-main {
+        display: grid;
+        gap: 3px;
         font-size: 22px;
         font-weight: 800;
         line-height: 1.15;
+      }
+
+      .stock-code {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .stock-name {
+        color: #f8fbff;
+        font-size: 16px;
+        font-weight: 700;
       }
 
       .stock-main small {
@@ -273,6 +310,10 @@
         font-size: 13px;
       }
 
+      .compact-score-note {
+        display: none;
+      }
+
       .panel,
       .report-shell {
         padding: 22px;
@@ -358,9 +399,68 @@
       }
 
       @media (max-width: 768px) {
+        .page {
+          padding: 14px 10px 28px;
+        }
+
+        .hero,
+        .panel,
+        .report-shell {
+          padding: 16px;
+          border-radius: 18px;
+        }
+
+        .hero-top {
+          gap: 12px;
+        }
+
+        .hero-actions {
+          width: 100%;
+          align-items: stretch;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-left: 0;
+        }
+
+        .hero-badges {
+          gap: 8px;
+          justify-content: flex-start;
+        }
+
+        .hero-badge,
+        .logout-button {
+          padding: 7px 11px;
+          font-size: 12px;
+        }
+
+        .dashboard {
+          margin-bottom: 14px;
+          border-radius: 18px;
+        }
+
         .dashboard-header {
           align-items: flex-start;
           flex-direction: column;
+          gap: 10px;
+          padding: 14px 16px;
+        }
+
+        .dashboard-header h2 {
+          font-size: 20px;
+        }
+
+        .dashboard-subtitle,
+        .muted {
+          font-size: 12px;
+        }
+
+        .legend {
+          gap: 8px;
+        }
+
+        .legend span {
+          font-size: 11px;
         }
 
         .screener-table,
@@ -391,20 +491,20 @@
 
         .screener-table tbody {
           display: grid;
-          gap: 14px;
-          padding: 14px;
+          gap: 10px;
+          padding: 10px;
         }
 
         .screener-table tbody tr {
           border: 1px solid var(--line);
-          border-radius: 18px;
+          border-radius: 14px;
           overflow: hidden;
           background: rgba(255, 255, 255, 0.03);
         }
 
         .screener-table tbody td {
           border-top: 1px solid var(--line);
-          padding: 14px 16px;
+          padding: 10px 12px;
         }
 
         .screener-table tbody td:first-child {
@@ -414,10 +514,10 @@
         .screener-table tbody td::before {
           content: attr(data-label);
           display: block;
-          margin-bottom: 8px;
+          margin-bottom: 6px;
           color: var(--muted);
-          font-size: 12px;
-          letter-spacing: 0.06em;
+          font-size: 11px;
+          letter-spacing: 0.05em;
         }
 
         .stock-cell,
@@ -425,17 +525,78 @@
           min-width: 0;
         }
 
+        .stock-rank {
+          width: 28px;
+          height: 28px;
+          margin-bottom: 6px;
+          font-size: 13px;
+        }
+
+        .stock-main {
+          gap: 2px;
+          font-size: 18px;
+        }
+
+        .stock-name {
+          font-size: 14px;
+        }
+
+        .stock-main small {
+          margin-top: 2px;
+          font-size: 12px;
+        }
+
+        .breakout-badge {
+          margin-top: 8px;
+          padding: 4px 8px;
+          font-size: 11px;
+        }
+
+        .metric-card,
+        .factor-grid {
+          gap: 8px;
+        }
+
+        .metric-row,
+        .factor-chip {
+          font-size: 12px;
+        }
+
+        .market-summary,
+        .fundamental-summary {
+          margin-top: 6px;
+          padding: 9px 10px;
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
         .score-pill {
           width: 100%;
           justify-content: space-between;
+          padding: 8px 10px;
+          border-radius: 12px;
+        }
+
+        .score-pill strong {
+          font-size: 22px;
+        }
+
+        .score-note {
+          display: none;
+        }
+
+        .compact-score-note {
+          display: block;
+          margin-top: 6px;
+          color: var(--muted);
+          font-size: 12px;
+          line-height: 1.35;
         }
       }
 
       @media (max-width: 640px) {
-        .page { padding: 16px 12px 40px; }
-        .hero, .panel, .report-shell { padding: 18px; }
-        .dashboard-header { padding: 16px 18px; }
-        .report-header h1 { font-size: 26px; }
+        .hero h1 { font-size: 28px; }
+        .report-header h1 { font-size: 24px; }
         input, button { width: 100%; }
       }
     </style>
@@ -448,10 +609,17 @@
             <h1>AI 投資分析師</h1>
             <p>把每日推薦股做成可讀性更高的策略儀表板，並可直接往下延伸成完整個股分析報告。</p>
           </div>
-          <div class="hero-badges">
-            <span class="hero-badge">策略榜單</span>
-            <span class="hero-badge">每日排程更新</span>
-            <span class="hero-badge">可解釋模型</span>
+          <div class="hero-actions">
+            {% if show_logout %}
+            <form class="logout-form" method="post" action="/logout">
+              <button type="submit" class="logout-button">登出</button>
+            </form>
+            {% endif %}
+            <div class="hero-badges">
+              <span class="hero-badge">策略榜單</span>
+              <span class="hero-badge">每日排程更新</span>
+              <span class="hero-badge">可解釋模型</span>
+            </div>
           </div>
         </div>
       </section>
@@ -540,13 +708,15 @@
       function buildScreenerTable(payload) {
         const rows = payload.results.slice(0, 12).map((item) => {
           const reasons = item.reasons || [];
-          const displayName = item.display_name ? ` ${escapeHtml(item.display_name)}` : '';
           return `
             <tr>
               <td class="stock-cell" data-label="股票">
                 <div class="stock-rank">${escapeHtml(item.rank)}</div>
                 <div class="stock-main">
-                  ${escapeHtml(item.ticker)}${displayName}
+                  <div class="stock-code">
+                    <span>${escapeHtml(item.ticker)}</span>
+                    ${item.display_name ? `<span class="stock-name">${escapeHtml(item.display_name)}</span>` : ''}
+                  </div>
                   <small>策略模型最新突破候選</small>
                 </div>
                 <span class="breakout-badge">最新突破</span>
@@ -565,6 +735,7 @@
               <td class="score-box" data-label="模型">
                 <div class="score-pill"><span>模型分數</span><strong>${escapeHtml(item.total_score)}</strong></div>
                 <div class="score-note">${escapeHtml(buildModelSummary(reasons))}</div>
+                <div class="compact-score-note">${escapeHtml(buildModelSummary(reasons))}</div>
                 <div class="factor-grid" style="margin-top: 12px;">${buildFactorChips(item.factor_scores)}</div>
               </td>
             </tr>

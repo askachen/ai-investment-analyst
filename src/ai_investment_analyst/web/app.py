@@ -16,6 +16,7 @@ import yfinance as yf
 
 from ai_investment_analyst.analysis.stock_report import candidate_market_tickers
 from ai_investment_analyst.analysis.stock_report import generate_stock_report
+from ai_investment_analyst.db.connection import get_connection
 from ai_investment_analyst.db.screener_store import load_latest_screener_snapshot
 
 app = FastAPI(title="AI Investment Analyst")
@@ -189,9 +190,35 @@ def lookup_taiwan_stock_name(ticker: str) -> str | None:
     return _load_taiwan_stock_name_map().get(ticker)
 
 
+def load_symbol_display_name_from_db(ticker: str) -> str | None:
+    try:
+        with get_connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(NULLIF(TRIM(local_name), ''), NULLIF(TRIM(name), ''))
+                FROM symbols
+                WHERE ticker = %s
+                ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+                LIMIT 1
+                """,
+                (ticker,),
+            )
+            row = cur.fetchone()
+    except Exception:
+        return None
+    if not row or not row[0]:
+        return None
+    return str(row[0]).strip()
+
+
 def resolve_screener_display_name(ticker: str) -> str | None:
     if ticker.isdigit():
-        return lookup_taiwan_stock_name(ticker)
+        chinese_name = lookup_taiwan_stock_name(ticker)
+        if chinese_name:
+            return chinese_name
+        db_name = load_symbol_display_name_from_db(ticker)
+        if db_name:
+            return db_name
     return resolve_stock_name(ticker)
 
 
@@ -275,6 +302,14 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     return response
 
 
+@app.post('/logout')
+def logout(request: Request):
+    redirect_target = '/login' if is_auth_enabled() else '/'
+    response = RedirectResponse(url=redirect_target, status_code=303)
+    response.delete_cookie(SESSION_COOKIE_NAME, httponly=True, samesite='lax')
+    return response
+
+
 @app.get('/', response_class=HTMLResponse)
 def index(request: Request):
     auth_redirect = require_auth_for_page(request)
@@ -286,6 +321,7 @@ def index(request: Request):
         {
             'result': None,
             'ticker': '',
+            'show_logout': is_auth_enabled() and is_authenticated(request),
         },
     )
 
