@@ -124,6 +124,15 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
 
     flush_section()
 
+    scenario_heading_labels = {
+        'Bull Case': '樂觀情境',
+        'Base Case': '基準情境',
+        'Bear Case': '保守情境',
+    }
+
+    def display_heading(heading: str) -> str:
+        return scenario_heading_labels.get(heading, heading)
+
     insight_cards: list[tuple[str, str]] = []
     scenario_sections: list[tuple[str, list[str], list[str]]] = []
     for heading, items in sections:
@@ -160,7 +169,9 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
             'Base Case': 'base',
             'Bear Case': 'bear',
         }.get(heading, 'base')
-        body_parts = [f'<article class="scenario-card scenario-card-{tone}"><div class="scenario-card-label">{escape(heading)}</div>']
+        body_parts = [
+            f'<article class="scenario-card scenario-card-{tone}"><div class="scenario-card-label">{escape(display_heading(heading))}</div>'
+        ]
         for paragraph in paragraph_items:
             body_parts.append(f'<p>{escape(paragraph)}</p>')
         if bullet_items:
@@ -197,14 +208,14 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
     if len(sections) > 1:
         body_parts.append('<nav class="report-nav" aria-label="報告章節快速導覽"><span class="report-nav-label">快速導覽</span><div class="report-nav-links">')
         for index, (heading, _) in enumerate(sections, start=1):
-            body_parts.append(f'<a href="#section-{index}">{escape(heading)}</a>')
+            body_parts.append(f'<a href="#section-{index}">{escape(display_heading(heading))}</a>')
         body_parts.append('</div></nav>')
 
     for index, (heading, items) in enumerate(sections, start=1):
         section_classes = ['report-section']
         if heading == '一句話投資主軸':
             section_classes.append('report-section-lead')
-        body_parts.append(f'<section id="section-{index}" class="{" ".join(section_classes)}"><h2>{escape(heading)}</h2>')
+        body_parts.append(f'<section id="section-{index}" class="{" ".join(section_classes)}"><h2>{escape(display_heading(heading))}</h2>')
         bullet_items = [item[2:] for item in items if item.startswith('- ')]
         paragraph_items = [item for item in items if not item.startswith('- ')]
         for paragraph_index, paragraph in enumerate(paragraph_items):

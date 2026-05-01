@@ -43,9 +43,9 @@ Bear Case
     assert '<span class="financial-snapshot-label">營收</span>' in html
     assert '<strong class="financial-snapshot-value">6500.00 億元</strong>' in html
     assert '<h2>目標價推導</h2>' in html
-    assert '<h2>Bull Case</h2>' in html
-    assert '<h2>Base Case</h2>' in html
-    assert '<h2>Bear Case</h2>' in html
+    assert '<h2>樂觀情境</h2>' in html
+    assert '<h2>基準情境</h2>' in html
+    assert '<h2>保守情境</h2>' in html
     assert '<h2>結論</h2>' in html
 
 
@@ -130,9 +130,9 @@ Bear Case
     assert '<section class="scenario-overview" aria-label="三種情境推演">' in html
     assert '<div class="scenario-overview-title">三種情境推演</div>' in html
     assert '<div class="scenario-grid scenario-grid-overview">' in html
-    assert '<article class="scenario-card scenario-card-bull">' in html
-    assert '<article class="scenario-card scenario-card-base">' in html
-    assert '<article class="scenario-card scenario-card-bear">' in html
+    assert '<article class="scenario-card scenario-card-bull"><div class="scenario-card-label">樂觀情境</div>' in html
+    assert '<article class="scenario-card scenario-card-base"><div class="scenario-card-label">基準情境</div>' in html
+    assert '<article class="scenario-card scenario-card-bear"><div class="scenario-card-label">保守情境</div>' in html
     assert 'AI 資本支出續強，推升產能利用率。' in html
     assert '高速運算需求延續，獲利穩步成長。' in html
     assert '終端需求放緩，評價面臨修正。' in html
