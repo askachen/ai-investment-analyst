@@ -31,6 +31,9 @@ def test_index_page_contains_form():
     assert 'factor-explainer' in response.text
     assert 'stock-primary-name' in response.text
     assert 'stock-secondary-code' in response.text
+    assert 'stock-rank-row' in response.text
+    assert 'stock-rank-label' in response.text
+    assert 'No.' in response.text
     assert 'summary-grid' in response.text
     assert 'summary-card' in response.text
     assert 'detail-section' in response.text
@@ -49,6 +52,7 @@ def test_index_page_contains_form():
     assert 'function buildRawFactorValue(key, reasons)' in response.text
     assert 'function buildFactorCards(factorScores, reasons)' in response.text
     assert 'function buildReportUrl(ticker)' in response.text
+    assert '點左側模型分數 可展開五個因子分數、權重與 0 分原因。' not in response.text
     assert '總分：綜合五個因子加權後的結果' in response.text
     assert '為什麼會 0 分？通常代表該因子目前偏弱' in response.text
     assert '返回個股完整報告' in response.text

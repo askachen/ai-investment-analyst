@@ -40,7 +40,7 @@
       .page {
         max-width: 1320px;
         margin: 0 auto;
-        padding: 24px 16px 56px;
+        padding: 20px 12px 40px;
       }
 
       .hero,
@@ -196,14 +196,35 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 52px;
-        height: 52px;
+        width: 56px;
+        height: 56px;
         border-radius: 18px;
         background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(96, 165, 250, 0.14));
         color: #eff6ff;
         font-weight: 900;
-        margin-bottom: 10px;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        flex: 0 0 auto;
+      }
+
+      .stock-rank-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .stock-rank-label {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        color: #eef4ff;
+      }
+
+      .stock-rank-prefix {
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #9db2d1;
       }
 
       .rank-value {
@@ -221,14 +242,14 @@
 
       .stock-main {
         display: grid;
-        gap: 4px;
+        gap: 3px;
         font-size: 22px;
         font-weight: 800;
         line-height: 1.15;
       }
 
       .stock-primary-name {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 800;
         color: #f8fbff;
         letter-spacing: -0.02em;
@@ -240,9 +261,9 @@
         gap: 8px;
         flex-wrap: wrap;
         color: #c6d7ee;
-        font-size: 13px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
       }
 
       .stock-code {
@@ -610,14 +631,14 @@
 
       @media (max-width: 768px) {
         .page {
-          padding: 10px 8px 24px;
+          padding: 6px 4px 18px;
         }
 
         .hero,
         .panel,
         .report-shell {
-          padding: 14px;
-          border-radius: 16px;
+          padding: 12px;
+          border-radius: 14px;
         }
 
         .hero-top {
@@ -645,24 +666,24 @@
         }
 
         .dashboard {
-          margin-bottom: 12px;
-          border-radius: 16px;
+          margin-bottom: 8px;
+          border-radius: 14px;
         }
 
         .dashboard-header {
           align-items: flex-start;
           flex-direction: column;
-          gap: 8px;
-          padding: 12px 14px;
+          gap: 6px;
+          padding: 10px 10px;
         }
 
         .dashboard-header h2 {
-          font-size: 18px;
+          font-size: 22px;
         }
 
         .dashboard-subtitle,
         .muted {
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .legend {
@@ -701,20 +722,20 @@
 
         .screener-table tbody {
           display: grid;
-          gap: 8px;
-          padding: 8px;
+          gap: 6px;
+          padding: 4px;
         }
 
         .screener-table tbody tr {
           border: 1px solid var(--line);
-          border-radius: 12px;
+          border-radius: 10px;
           overflow: hidden;
           background: rgba(255, 255, 255, 0.03);
         }
 
         .screener-table tbody td {
           border-top: 1px solid var(--line);
-          padding: 8px 10px;
+          padding: 10px 10px;
         }
 
         .screener-table tbody td:first-child {
@@ -740,13 +761,22 @@
         }
 
         .stock-rank {
-          width: 42px;
-          height: 42px;
-          margin-bottom: 4px;
+          width: 54px;
+          height: 54px;
+          margin-bottom: 0;
+        }
+
+        .stock-rank-row {
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+
+        .stock-rank-prefix {
+          font-size: 14px;
         }
 
         .rank-value {
-          font-size: 24px;
+          font-size: 28px;
         }
 
         .stock-header {
@@ -754,17 +784,17 @@
         }
 
         .stock-main {
-          gap: 2px;
-          font-size: 16px;
+          gap: 3px;
+          font-size: 18px;
         }
 
         .stock-primary-name {
-          font-size: 19px;
+          font-size: 24px;
         }
 
         .stock-secondary-code {
           gap: 6px;
-          font-size: 11px;
+          font-size: 20px;
         }
 
         .stock-code {
@@ -776,20 +806,20 @@
         }
 
         .score-details {
-          margin-top: 8px;
+          margin-top: 10px;
           min-width: 0;
         }
 
         .score-badge {
           width: 100%;
           justify-content: space-between;
-          padding: 7px 9px;
+          padding: 9px 10px;
           border-radius: 10px;
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .score-badge strong {
-          font-size: 19px;
+          font-size: 22px;
         }
 
         .score-panel {
@@ -1141,12 +1171,17 @@
           return `
             <tr>
               <td class="stock-cell" data-label="股票">
-                <div class="stock-rank"><span class="rank-value">${escapeHtml(item.rank)}</span></div>
+                <div class="stock-rank-row">
+                  <div class="stock-rank"><span class="rank-value">${escapeHtml(item.rank)}</span></div>
+                  <div class="stock-rank-label">
+                    <span class="stock-rank-prefix">No.</span>
+                    <span class="stock-secondary-code">${escapeHtml(secondaryCode)}</span>
+                  </div>
+                </div>
                 <div class="stock-header">
                   <a class="stock-link" href="${reportUrl}">
                     <div class="stock-main">
                       <div class="stock-primary-name">${escapeHtml(primaryName)}</div>
-                      <div class="stock-secondary-code">${escapeHtml(secondaryCode)}</div>
                       <small>策略模型最新突破候選</small>
                     </div>
                   </a>
@@ -1190,7 +1225,6 @@
                 </div>
                 <div class="detail-section">
                   <span class="detail-section-title">模型</span>
-                  <div class="score-box-hint"><strong>點左側模型分數</strong> 可展開五個因子分數、權重與 0 分原因。</div>
                 </div>
                 <a class="stock-link compact-score-note" href="${reportUrl}">返回個股完整報告 →</a>
               </td>
@@ -1205,9 +1239,7 @@
                   <div class="fundamental-summary">${escapeHtml(buildFundamentalSummary(reasons))}</div>
                 </div>
               </td>
-              <td class="score-box" data-label="模型">
-                <div class="score-box-hint"><strong>點左側模型分數</strong> 可展開五個因子分數、權重與 0 分原因。</div>
-              </td>
+              <td class="score-box" data-label="模型"></td>
             </tr>
           `;
         }).join('');
