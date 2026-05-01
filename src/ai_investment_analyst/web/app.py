@@ -41,6 +41,7 @@ class ReportResponse(BaseModel):
 class ScreenerResultResponse(BaseModel):
     rank: int
     ticker: str
+    display_name: str | None = None
     total_score: str
     reasons: list[str] = Field(default_factory=list)
     close_price: str | None = None
@@ -188,6 +189,24 @@ def lookup_taiwan_stock_name(ticker: str) -> str | None:
     return _load_taiwan_stock_name_map().get(ticker)
 
 
+def resolve_screener_display_name(ticker: str) -> str | None:
+    if ticker.isdigit():
+        return lookup_taiwan_stock_name(ticker)
+    return resolve_stock_name(ticker)
+
+
+def enrich_screener_snapshot(snapshot: dict) -> dict:
+    enriched_results = []
+    for result in snapshot.get('results', []):
+        item = dict(result)
+        item['display_name'] = resolve_screener_display_name(item['ticker'])
+        enriched_results.append(item)
+    return {
+        **snapshot,
+        'results': enriched_results,
+    }
+
+
 def get_web_login_password() -> str:
     return os.getenv('WEB_LOGIN_PASSWORD', '').strip()
 
@@ -292,5 +311,5 @@ def get_latest_screener(request: Request):
         snapshot = None
     if snapshot is None:
         return ScreenerSnapshotResponse()
-    return ScreenerSnapshotResponse(**snapshot)
+    return ScreenerSnapshotResponse(**enrich_screener_snapshot(snapshot))
 

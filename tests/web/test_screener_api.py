@@ -4,6 +4,7 @@ from ai_investment_analyst.web.app import app
 
 
 def test_latest_screener_api_returns_snapshot(monkeypatch):
+    monkeypatch.setattr('ai_investment_analyst.web.app.resolve_screener_display_name', lambda ticker: {'2330': '台積電', '2454': '聯發科'}.get(ticker))
     monkeypatch.setattr(
         'ai_investment_analyst.web.app.load_latest_screener_snapshot',
         lambda: {
@@ -22,6 +23,12 @@ def test_latest_screener_api_returns_snapshot(monkeypatch):
                     'total_score': '74.25',
                     'reasons': ['EPS 維持正值'],
                 },
+                {
+                    'rank': 3,
+                    'ticker': 'AAPL',
+                    'total_score': '63.20',
+                    'reasons': ['估值中性'],
+                },
             ],
         },
     )
@@ -33,8 +40,11 @@ def test_latest_screener_api_returns_snapshot(monkeypatch):
     payload = response.json()
     assert payload['run_date'] == '2026-05-01'
     assert payload['results'][0]['ticker'] == '2330'
+    assert payload['results'][0]['display_name'] == '台積電'
     assert payload['results'][0]['rank'] == 1
     assert payload['results'][0]['reasons'][0] == '月營收年增 22.30%'
+    assert payload['results'][2]['ticker'] == 'AAPL'
+    assert payload['results'][2]['display_name'] is None
 
 
 def test_latest_screener_api_returns_empty_payload_when_missing(monkeypatch):

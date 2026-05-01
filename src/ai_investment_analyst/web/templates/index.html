@@ -6,80 +6,512 @@
     <title>AI 投資分析師</title>
     <style>
       :root {
-        --bg: #f5f7fb;
-        --card: #ffffff;
-        --text: #162033;
-        --muted: #667085;
-        --border: #dbe2ea;
-        --accent: #4f46e5;
-        --accent-soft: #eef2ff;
-        --success: #047857;
-        --warning: #b45309;
+        --bg: #07111f;
+        --bg-soft: #0d1b2c;
+        --card: #0f1f33;
+        --card-2: #132844;
+        --line: rgba(148, 163, 184, 0.18);
+        --text: #ecf5ff;
+        --muted: #99a9bf;
+        --accent: #60a5fa;
+        --accent-2: #2563eb;
+        --rose: #fb7185;
+        --rose-soft: rgba(251, 113, 133, 0.16);
+        --emerald: #34d399;
+        --emerald-soft: rgba(52, 211, 153, 0.14);
+        --amber: #fbbf24;
+        --amber-soft: rgba(251, 191, 36, 0.14);
+        --white: #ffffff;
+        --shadow: 0 20px 45px rgba(2, 6, 23, 0.35);
       }
-      body { font-family: Arial, sans-serif; max-width: 1040px; margin: 32px auto; padding: 0 16px 40px; line-height: 1.6; background: var(--bg); color: var(--text); }
-      input, button, textarea { font-size: 16px; }
-      input { padding: 12px 14px; width: 240px; border-radius: 10px; border: 1px solid var(--border); }
-      button { padding: 12px 16px; border: 0; border-radius: 10px; background: var(--accent); color: white; font-weight: 600; cursor: pointer; }
-      .hero, .panel, .report-shell { background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); }
-      .hero { padding: 28px; margin-bottom: 20px; }
-      .panel { padding: 20px 24px; margin-bottom: 20px; }
-      .report-shell { padding: 24px; }
-      .muted { color: var(--muted); font-size: 14px; }
-      .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background:
+          radial-gradient(circle at top right, rgba(37, 99, 235, 0.22), transparent 30%),
+          radial-gradient(circle at top left, rgba(251, 113, 133, 0.16), transparent 24%),
+          var(--bg);
+        color: var(--text);
+      }
+
+      .page {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 24px 16px 56px;
+      }
+
+      .hero,
+      .dashboard,
+      .panel,
+      .report-shell {
+        background: linear-gradient(180deg, rgba(19, 40, 68, 0.96), rgba(10, 21, 37, 0.98));
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 18px;
+      }
+
+      .hero-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+
+      .hero h1 {
+        margin: 0 0 8px;
+        font-size: 38px;
+        line-height: 1.1;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .hero-badges {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .hero-badge {
+        padding: 9px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(96, 165, 250, 0.22);
+        background: rgba(96, 165, 250, 0.12);
+        color: #dbeafe;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .dashboard {
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+
+      .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(90deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0));
+      }
+
+      .dashboard-header h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      .dashboard-subtitle,
+      .muted {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .screener-scroll {
+        overflow-x: auto;
+      }
+
+      .screener-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1020px;
+      }
+
+      .screener-table thead th {
+        text-align: left;
+        padding: 16px 18px;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        color: #d6e4ff;
+        background: rgba(15, 23, 42, 0.52);
+      }
+
+      .screener-table tbody td {
+        padding: 18px;
+        border-top: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      .screener-table tbody tr:hover {
+        background: rgba(148, 163, 184, 0.05);
+      }
+
+      .stock-cell {
+        min-width: 220px;
+      }
+
+      .stock-rank {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background: rgba(96, 165, 250, 0.16);
+        color: #dbeafe;
+        font-weight: 800;
+        margin-bottom: 10px;
+      }
+
+      .stock-main {
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1.15;
+      }
+
+      .stock-main small {
+        display: block;
+        margin-top: 4px;
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .breakout-badge {
+        display: inline-flex;
+        margin-top: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--rose-soft);
+        color: #fecdd3;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .metric-card {
+        display: grid;
+        gap: 10px;
+      }
+
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: baseline;
+        font-size: 14px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+      }
+
+      .metric-value {
+        color: var(--white);
+        font-weight: 700;
+        text-align: right;
+      }
+
+      .market-summary,
+      .fundamental-summary {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        color: #dce8f8;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .factor-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .factor-chip {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(96, 165, 250, 0.08);
+        border: 1px solid rgba(96, 165, 250, 0.14);
+        font-size: 13px;
+      }
+
+      .factor-chip span:last-child {
+        color: #dbeafe;
+        font-weight: 700;
+      }
+
+      .score-box {
+        min-width: 200px;
+      }
+
+      .score-pill {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(96, 165, 250, 0.88));
+        color: white;
+        font-weight: 800;
+      }
+
+      .score-pill strong {
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .score-note {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .panel,
+      .report-shell {
+        padding: 22px;
+        margin-top: 20px;
+      }
+
+      input, button, textarea {
+        font-size: 16px;
+      }
+
+      input {
+        width: min(280px, 100%);
+        padding: 12px 14px;
+        color: var(--text);
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+      }
+
+      button {
+        padding: 12px 16px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent-2), var(--accent));
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
       .report-card { display: grid; gap: 20px; }
-      .screener-list { display: grid; gap: 14px; }
-      .screener-item { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: #fbfdff; }
-      .screener-item-header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
-      .screener-item h3 { margin: 0; font-size: 20px; }
-      .screener-score { color: var(--accent); font-weight: 700; }
-      .screener-meta { color: var(--muted); font-size: 14px; margin: 0 0 6px; }
-      .screener-item ul { margin: 0; padding-left: 20px; }
-      .screener-item li { margin-bottom: 6px; }
       .report-header h1 { margin: 0 0 8px; font-size: 32px; }
       .report-badges { display: flex; gap: 10px; flex-wrap: wrap; }
       .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 700; }
-      .badge-rating { background: var(--accent-soft); color: var(--accent); }
-      .badge-confidence { background: #ecfdf3; color: var(--success); }
-      .report-section { border-top: 1px solid var(--border); padding-top: 18px; }
+      .badge-rating { background: rgba(96, 165, 250, 0.14); color: #dbeafe; }
+      .badge-confidence { background: rgba(52, 211, 153, 0.14); color: #c9ffe6; }
+      .report-section { border-top: 1px solid var(--line); padding-top: 18px; }
       .report-section h2 { margin: 0 0 10px; font-size: 20px; }
       .report-section p { margin: 0 0 10px; }
       .report-section ul { margin: 0; padding-left: 20px; }
       .report-section li { margin-bottom: 8px; }
-      .placeholder { color: var(--muted); background: #f8fafc; border: 1px dashed var(--border); border-radius: 14px; padding: 18px; }
+      .placeholder {
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px dashed rgba(148, 163, 184, 0.24);
+        border-radius: 16px;
+        padding: 18px;
+      }
+
+      .legend {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+      }
+
+      .legend .hot { background: var(--rose); }
+      .legend .good { background: var(--emerald); }
+      .legend .warn { background: var(--amber); }
+
+      @media (max-width: 900px) {
+        .hero h1 { font-size: 30px; }
+      }
+
       @media (max-width: 640px) {
+        .page { padding: 16px 12px 40px; }
         .hero, .panel, .report-shell { padding: 18px; }
+        .dashboard-header { padding: 16px 18px; }
         .report-header h1 { font-size: 26px; }
         input, button { width: 100%; }
       }
     </style>
   </head>
   <body>
-    <section class="hero">
-      <h1>AI 投資分析師</h1>
-      <p>輸入股票代號，例如 2330、TSM、AAPL。</p>
-    </section>
-    <section class="panel">
-      <form id="report-form">
-        <div class="form-row">
-          <input type="text" name="ticker" id="ticker" placeholder="請輸入股票代號" value="{{ ticker }}" />
-          <button type="submit">開始分析</button>
+    <main class="page">
+      <section class="hero">
+        <div class="hero-top">
+          <div>
+            <h1>AI 投資分析師</h1>
+            <p>把每日推薦股做成可讀性更高的策略儀表板，並可直接往下延伸成完整個股分析報告。</p>
+          </div>
+          <div class="hero-badges">
+            <span class="hero-badge">策略榜單</span>
+            <span class="hero-badge">每日排程更新</span>
+            <span class="hero-badge">可解釋模型</span>
+          </div>
         </div>
-      </form>
-      <p class="muted">本內容僅供參考，不構成投資建議。</p>
-    </section>
-    <section class="panel">
-      <h2>今日推薦排名</h2>
-      <p class="muted">每天排程更新，顯示目前最新一批可解釋排序結果。</p>
-      <div id="daily-screener" class="placeholder">載入今日推薦中...</div>
-    </section>
-    <section class="report-shell">
-      <div id="result-html" class="placeholder">{% if result %}{{ result }}{% else %}尚未產生報告{% endif %}</div>
-    </section>
+      </section>
+
+      <section class="dashboard">
+        <div class="dashboard-header">
+          <div>
+            <h2>推薦股策略排行</h2>
+            <div class="dashboard-subtitle">類似策略儀表板的單頁展示：股票 / 盤面 / 基本面 / 模型</div>
+          </div>
+          <div class="legend">
+            <span><i class="hot"></i> 強勢 / 突破</span>
+            <span><i class="good"></i> 正向基本面</span>
+            <span><i class="warn"></i> 需持續觀察</span>
+          </div>
+        </div>
+        <div id="daily-screener" class="placeholder" style="margin: 18px;">載入今日推薦中...</div>
+      </section>
+
+      <section class="panel">
+        <form id="report-form">
+          <div class="form-row">
+            <input type="text" name="ticker" id="ticker" placeholder="請輸入股票代號，例如 2330" value="{{ ticker }}" />
+            <button type="submit">開始分析</button>
+          </div>
+        </form>
+        <p class="muted">本內容僅供參考，不構成投資建議。</p>
+      </section>
+
+      <section class="report-shell">
+        <div id="result-html" class="placeholder">{% if result %}{{ result }}{% else %}尚未產生報告{% endif %}</div>
+      </section>
+    </main>
+
     <script>
       const form = document.getElementById('report-form');
       const result = document.getElementById('result-html');
       const screener = document.getElementById('daily-screener');
       const submitButton = form.querySelector('button[type="submit"]');
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function factorLabel(key) {
+        return {
+          momentum: '盤面',
+          revenue: '營收',
+          quality: '品質',
+          valuation: '估值',
+          liquidity: '流動性',
+        }[key] || key;
+      }
+
+      function buildMarketSummary(reasons) {
+        return reasons[0] || '目前尚無額外盤面摘要。';
+      }
+
+      function buildFundamentalSummary(reasons) {
+        return [reasons[1], reasons[2], reasons[3]].filter(Boolean).join(' ')
+          || '目前尚無完整基本面摘要。';
+      }
+
+      function buildModelSummary(reasons) {
+        return reasons[4] || reasons[5] || '模型綜合動能、營收、品質、估值與流動性進行排序。';
+      }
+
+      function buildFactorChips(factorScores) {
+        const entries = Object.entries(factorScores || {});
+        if (entries.length === 0) {
+          return '<div class="factor-chip"><span>模型因子</span><span>資料不足</span></div>';
+        }
+        return entries.map(([key, value]) => `
+          <div class="factor-chip">
+            <span>${escapeHtml(factorLabel(key))}</span>
+            <span>${escapeHtml(value)}/100</span>
+          </div>
+        `).join('');
+      }
+
+      function buildScreenerTable(payload) {
+        const rows = payload.results.slice(0, 12).map((item) => {
+          const reasons = item.reasons || [];
+          const displayName = item.display_name ? ` ${escapeHtml(item.display_name)}` : '';
+          return `
+            <tr>
+              <td class="stock-cell">
+                <div class="stock-rank">${escapeHtml(item.rank)}</div>
+                <div class="stock-main">
+                  ${escapeHtml(item.ticker)}${displayName}
+                  <small>策略模型最新突破候選</small>
+                </div>
+                <span class="breakout-badge">最新突破</span>
+              </td>
+              <td>
+                <div class="metric-card">
+                  <div class="metric-row"><span class="metric-label">收盤價</span><span class="metric-value">${escapeHtml(item.close_price || 'N/A')}</span></div>
+                  <div class="market-summary">${escapeHtml(buildMarketSummary(reasons))}</div>
+                </div>
+              </td>
+              <td>
+                <div class="metric-card">
+                  <div class="fundamental-summary">${escapeHtml(buildFundamentalSummary(reasons))}</div>
+                </div>
+              </td>
+              <td class="score-box">
+                <div class="score-pill"><span>模型分數</span><strong>${escapeHtml(item.total_score)}</strong></div>
+                <div class="score-note">${escapeHtml(buildModelSummary(reasons))}</div>
+                <div class="factor-grid" style="margin-top: 12px;">${buildFactorChips(item.factor_scores)}</div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        return `
+          <div class="screener-scroll">
+            <table class="screener-table">
+              <thead>
+                <tr>
+                  <th>股票</th>
+                  <th>盤面</th>
+                  <th>基本面</th>
+                  <th>模型</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
 
       async function loadLatestScreener() {
         try {
@@ -93,22 +525,14 @@
             screener.innerHTML = '<div class="placeholder">尚未產生今日推薦排名。</div>';
             return;
           }
-          const items = payload.results.slice(0, 10).map((item) => {
-            const reasons = (item.reasons || []).slice(0, 3).map((reason) => `<li>${reason}</li>`).join('');
-            return `
-              <article class="screener-item">
-                <div class="screener-item-header">
-                  <h3>${item.rank}. ${item.ticker}</h3>
-                  <span class="screener-score">總分 ${item.total_score}</span>
-                </div>
-                <p class="screener-meta">收盤價：${item.close_price || 'N/A'}</p>
-                <ul>${reasons}</ul>
-              </article>
-            `;
-          }).join('');
+          screener.style.margin = '0';
+          screener.style.border = '0';
+          screener.style.background = 'transparent';
+          const generatedLabel = payload.run_date || 'N/A';
+          const timestampLabel = payload.generated_at || '';
           screener.innerHTML = `
-            <div class="muted">最新更新：${payload.run_date || 'N/A'} ${payload.generated_at || ''}</div>
-            <div class="screener-list">${items}</div>
+            <div style="padding: 18px 22px 0;" class="muted">策略更新日：${escapeHtml(generatedLabel)}　${escapeHtml(timestampLabel)}　｜　候選數：${escapeHtml(payload.candidate_count ?? 'N/A')}</div>
+            ${buildScreenerTable(payload)}
           `;
         } catch (error) {
           screener.innerHTML = '<div class="placeholder">目前無法載入今日推薦排名。</div>';
