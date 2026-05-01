@@ -17,6 +17,9 @@ def test_index_page_contains_form():
     assert '盤面' in response.text
     assert '基本面' in response.text
     assert '模型' in response.text
+    assert '@media (max-width: 768px)' in response.text
+    assert 'overflow-x: hidden;' in response.text
+    assert 'data-label="股票"' in response.text
     assert "fetch('/api/screener/latest')" in response.text
     assert 'const submitButton = form.querySelector(\'button[type="submit"]\');' in response.text
     assert 'submitButton.disabled = true;' in response.text

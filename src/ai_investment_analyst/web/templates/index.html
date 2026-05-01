@@ -29,6 +29,7 @@
       body {
         margin: 0;
         font-family: Arial, sans-serif;
+        overflow-x: hidden;
         background:
           radial-gradient(circle at top right, rgba(37, 99, 235, 0.22), transparent 30%),
           radial-gradient(circle at top left, rgba(251, 113, 133, 0.16), transparent 24%),
@@ -356,6 +357,80 @@
         .hero h1 { font-size: 30px; }
       }
 
+      @media (max-width: 768px) {
+        .dashboard-header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .screener-table,
+        .screener-table thead,
+        .screener-table tbody,
+        .screener-table th,
+        .screener-table td,
+        .screener-table tr {
+          display: block;
+          width: 100%;
+        }
+
+        .screener-table {
+          min-width: 0;
+        }
+
+        .screener-table thead {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        .screener-table tbody {
+          display: grid;
+          gap: 14px;
+          padding: 14px;
+        }
+
+        .screener-table tbody tr {
+          border: 1px solid var(--line);
+          border-radius: 18px;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .screener-table tbody td {
+          border-top: 1px solid var(--line);
+          padding: 14px 16px;
+        }
+
+        .screener-table tbody td:first-child {
+          border-top: 0;
+        }
+
+        .screener-table tbody td::before {
+          content: attr(data-label);
+          display: block;
+          margin-bottom: 8px;
+          color: var(--muted);
+          font-size: 12px;
+          letter-spacing: 0.06em;
+        }
+
+        .stock-cell,
+        .score-box {
+          min-width: 0;
+        }
+
+        .score-pill {
+          width: 100%;
+          justify-content: space-between;
+        }
+      }
+
       @media (max-width: 640px) {
         .page { padding: 16px 12px 40px; }
         .hero, .panel, .report-shell { padding: 18px; }
@@ -468,7 +543,7 @@
           const displayName = item.display_name ? ` ${escapeHtml(item.display_name)}` : '';
           return `
             <tr>
-              <td class="stock-cell">
+              <td class="stock-cell" data-label="股票">
                 <div class="stock-rank">${escapeHtml(item.rank)}</div>
                 <div class="stock-main">
                   ${escapeHtml(item.ticker)}${displayName}
@@ -476,18 +551,18 @@
                 </div>
                 <span class="breakout-badge">最新突破</span>
               </td>
-              <td>
+              <td data-label="盤面">
                 <div class="metric-card">
                   <div class="metric-row"><span class="metric-label">收盤價</span><span class="metric-value">${escapeHtml(item.close_price || 'N/A')}</span></div>
                   <div class="market-summary">${escapeHtml(buildMarketSummary(reasons))}</div>
                 </div>
               </td>
-              <td>
+              <td data-label="基本面">
                 <div class="metric-card">
                   <div class="fundamental-summary">${escapeHtml(buildFundamentalSummary(reasons))}</div>
                 </div>
               </td>
-              <td class="score-box">
+              <td class="score-box" data-label="模型">
                 <div class="score-pill"><span>模型分數</span><strong>${escapeHtml(item.total_score)}</strong></div>
                 <div class="score-note">${escapeHtml(buildModelSummary(reasons))}</div>
                 <div class="factor-grid" style="margin-top: 12px;">${buildFactorChips(item.factor_scores)}</div>

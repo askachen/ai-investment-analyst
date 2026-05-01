@@ -4,6 +4,7 @@ from ai_investment_analyst.web.app import app
 
 
 def test_login_page_renders_when_auth_enabled(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_USERNAME', 'aska')
     monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
 
     client = TestClient(app)
@@ -11,7 +12,9 @@ def test_login_page_renders_when_auth_enabled(monkeypatch):
 
     assert response.status_code == 200
     assert '登入 AI 投資分析師' in response.text
+    assert 'name="username"' in response.text
     assert 'name="password"' in response.text
+    assert '請輸入帳號' in response.text
 
 
 def test_index_redirects_to_login_when_not_authenticated(monkeypatch):
@@ -25,14 +28,37 @@ def test_index_redirects_to_login_when_not_authenticated(monkeypatch):
 
 
 def test_login_sets_session_cookie_and_redirects(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_USERNAME', 'aska')
     monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
 
     client = TestClient(app)
-    response = client.post('/login', data={'password': 'secret-pass'}, follow_redirects=False)
+    response = client.post('/login', data={'username': 'aska', 'password': 'secret-pass'}, follow_redirects=False)
 
     assert response.status_code == 303
     assert response.headers['location'] == '/'
     assert 'session=' in response.headers['set-cookie']
+
+
+def test_login_uses_admin_as_default_username(monkeypatch):
+    monkeypatch.delenv('WEB_LOGIN_USERNAME', raising=False)
+    monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
+
+    client = TestClient(app)
+    response = client.post('/login', data={'username': 'admin', 'password': 'secret-pass'}, follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers['location'] == '/'
+
+
+def test_login_rejects_wrong_username(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_USERNAME', 'aska')
+    monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
+
+    client = TestClient(app)
+    response = client.post('/login', data={'username': 'wrong', 'password': 'secret-pass'})
+
+    assert response.status_code == 401
+    assert '帳號或密碼錯誤' in response.text
 
 
 def test_report_api_requires_login_when_auth_enabled(monkeypatch):
@@ -46,6 +72,7 @@ def test_report_api_requires_login_when_auth_enabled(monkeypatch):
 
 
 def test_authenticated_user_can_access_report_api(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_USERNAME', 'aska')
     monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
     monkeypatch.setattr(
         'ai_investment_analyst.web.app.generate_stock_report',
@@ -53,7 +80,7 @@ def test_authenticated_user_can_access_report_api(monkeypatch):
     )
 
     client = TestClient(app)
-    login_response = client.post('/login', data={'password': 'secret-pass'}, follow_redirects=False)
+    login_response = client.post('/login', data={'username': 'aska', 'password': 'secret-pass'}, follow_redirects=False)
 
     assert login_response.status_code == 303
 
@@ -73,6 +100,7 @@ def test_screener_api_requires_login_when_auth_enabled(monkeypatch):
 
 
 def test_authenticated_user_can_access_screener_api(monkeypatch):
+    monkeypatch.setenv('WEB_LOGIN_USERNAME', 'aska')
     monkeypatch.setenv('WEB_LOGIN_PASSWORD', 'secret-pass')
     monkeypatch.setattr(
         'ai_investment_analyst.web.app.load_latest_screener_snapshot',
@@ -80,7 +108,7 @@ def test_authenticated_user_can_access_screener_api(monkeypatch):
     )
 
     client = TestClient(app)
-    login_response = client.post('/login', data={'password': 'secret-pass'}, follow_redirects=False)
+    login_response = client.post('/login', data={'username': 'aska', 'password': 'secret-pass'}, follow_redirects=False)
 
     assert login_response.status_code == 303
 

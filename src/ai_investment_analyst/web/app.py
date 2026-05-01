@@ -207,6 +207,10 @@ def enrich_screener_snapshot(snapshot: dict) -> dict:
     }
 
 
+def get_web_login_username() -> str:
+    return os.getenv('WEB_LOGIN_USERNAME', 'admin').strip() or 'admin'
+
+
 def get_web_login_password() -> str:
     return os.getenv('WEB_LOGIN_PASSWORD', '').strip()
 
@@ -244,21 +248,24 @@ def login_page(request: Request):
         'login.html',
         {
             'error': None,
+            'username_placeholder': get_web_login_username(),
         },
     )
 
 
 @app.post('/login')
-def login(request: Request, password: str = Form(...)):
+def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    expected_username = get_web_login_username()
     expected_password = get_web_login_password()
     if not expected_password:
         return RedirectResponse(url='/', status_code=303)
-    if not compare_digest(password, expected_password):
+    if not compare_digest(username.strip(), expected_username) or not compare_digest(password, expected_password):
         return TEMPLATES.TemplateResponse(
             request,
             'login.html',
             {
-                'error': '密碼錯誤，請再試一次。',
+                'error': '帳號或密碼錯誤，請再試一次。',
+                'username_placeholder': expected_username,
             },
             status_code=401,
         )
