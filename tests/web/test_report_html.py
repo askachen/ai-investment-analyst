@@ -188,3 +188,29 @@ AI 伺服器出貨動能延續。
     assert '<div class="risk-focus-title">風險提示重點</div>' in html
     assert '雲端客戶資本支出若遞延，短線修正壓力將升高。' in html
     assert '毛利率改善速度可能低於市場預期。' in html
+
+
+def test_render_report_html_builds_quick_brief_from_takeaway_catalyst_and_risk():
+    report = """【個股分析報告】3017 奇鋐
+投資評級：買進
+信心等級：中高
+
+利多催化
+- GB200 水冷模組出貨升溫。
+
+潛在風險
+- 高階散熱市場競爭升溫。
+
+分析師觀點
+短線動能偏強，但仍需留意評價升溫後的震盪。"""
+
+    html = render_report_html(report)
+
+    assert '<section class="quick-brief" aria-label="決策速讀">' in html
+    assert '<div class="quick-brief-title">決策速讀</div>' in html
+    assert '<span class="quick-brief-label">分析師結論</span>' in html
+    assert '<span class="quick-brief-label">利多催化</span>' in html
+    assert '<span class="quick-brief-label">潛在風險</span>' in html
+    assert '短線動能偏強，但仍需留意評價升溫後的震盪。' in html
+    assert 'GB200 水冷模組出貨升溫。' in html
+    assert '高階散熱市場競爭升溫。' in html

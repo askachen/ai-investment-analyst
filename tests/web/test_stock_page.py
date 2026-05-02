@@ -57,7 +57,9 @@ def test_stock_detail_page_shows_observation_radar_when_report_contains_catalyst
 中性觀察
 - 客戶拉貨節奏仍需持續追蹤。
 潛在風險
-- 高階散熱市場競爭升溫。"""
+- 高階散熱市場競爭升溫。
+分析師觀點
+短線動能偏強，但仍需留意評價升溫後的震盪。"""
     monkeypatch.setattr('ai_investment_analyst.web.app.generate_stock_report', lambda ticker: report)
     monkeypatch.setattr('ai_investment_analyst.web.app.resolve_stock_name', lambda ticker: '奇鋐' if ticker == '3017' else None)
 
@@ -65,6 +67,11 @@ def test_stock_detail_page_shows_observation_radar_when_report_contains_catalyst
     response = client.get('/stocks/3017')
 
     assert response.status_code == 200
+    assert '決策速讀' in response.text
+    assert '分析師結論' in response.text
+    assert '利多催化' in response.text
+    assert '潛在風險' in response.text
+    assert '短線動能偏強，但仍需留意評價升溫後的震盪。' in response.text
     assert '投資觀察雷達' in response.text
     assert 'observation-card observation-card-bull' in response.text
     assert 'observation-card observation-card-neutral' in response.text

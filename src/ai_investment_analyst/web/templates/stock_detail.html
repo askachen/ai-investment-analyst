@@ -170,6 +170,14 @@
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(96, 165, 250, 0.14));
         border: 1px solid rgba(96, 165, 250, 0.18);
       }
+      .quick-brief {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(15, 23, 42, 0.92));
+        border: 1px solid rgba(96, 165, 250, 0.22);
+      }
       .observation-radar {
         display: grid;
         gap: 12px;
@@ -184,10 +192,16 @@
         letter-spacing: 0.08em;
         color: #bfd7f7;
       }
+      .quick-brief-title,
       .observation-radar-title {
         font-size: 12px;
         font-weight: 800;
         letter-spacing: 0.08em;
+      }
+      .quick-brief-title {
+        color: #dbeafe;
+      }
+      .observation-radar-title {
         color: #d8e5f8;
       }
       .analyst-takeaway,
@@ -268,14 +282,16 @@
       .report-section li { margin-bottom: 8px; line-height: 1.6; }
       .financial-snapshot-grid,
       .scenario-grid,
-      .observation-grid {
+      .observation-grid,
+      .quick-brief-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 12px;
       }
       .financial-snapshot-card,
       .scenario-card,
-      .observation-card {
+      .observation-card,
+      .quick-brief-card {
         display: grid;
         gap: 8px;
         padding: 16px;
@@ -285,7 +301,8 @@
       }
       .financial-snapshot-label,
       .scenario-card-label,
-      .observation-card-label {
+      .observation-card-label,
+      .quick-brief-label {
         font-size: 12px;
         font-weight: 800;
         letter-spacing: 0.08em;
@@ -294,6 +311,11 @@
       .financial-snapshot-value {
         font-size: 24px;
         line-height: 1.2;
+        color: #f8fbff;
+      }
+      .quick-brief-card strong {
+        font-size: 16px;
+        line-height: 1.65;
         color: #f8fbff;
       }
       .scenario-card-bull {

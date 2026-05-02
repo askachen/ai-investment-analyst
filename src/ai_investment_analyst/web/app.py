@@ -156,6 +156,7 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
     observation_sections: list[tuple[str, str, list[str], list[str]]] = []
     analyst_takeaway: str | None = None
     risk_focus_items: list[str] = []
+    quick_brief_cards: list[tuple[str, str]] = []
     observation_tones = {
         '利多催化': 'bull',
         '中性觀察': 'neutral',
@@ -176,12 +177,19 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
             insight_cards.append(('目標價推導', paragraph_items[0]))
         elif heading in {'分析師觀點', '投資建議', '結論'} and analyst_takeaway is None:
             analyst_takeaway = next((item for item in [*paragraph_items, *bullet_items] if item.strip()), None)
+            if analyst_takeaway:
+                quick_brief_cards.append(('分析師結論', analyst_takeaway))
         elif heading == '風險提示' and (bullet_items or paragraph_items):
             risk_focus_items = [item for item in [*bullet_items, *paragraph_items] if item.strip()]
+            if risk_focus_items and not any(label == '潛在風險' for label, _ in quick_brief_cards):
+                quick_brief_cards.append(('潛在風險', risk_focus_items[0]))
         elif heading in {'Bull Case', 'Base Case', 'Bear Case'}:
             scenario_sections.append((heading, bullet_items, paragraph_items))
         elif heading in observation_tones and (bullet_items or paragraph_items):
             observation_sections.append((heading, observation_tones[heading], bullet_items, paragraph_items))
+            first_observation = next((item for item in [*bullet_items, *paragraph_items] if item.strip()), None)
+            if first_observation and heading in {'利多催化', '潛在風險'}:
+                quick_brief_cards.append((heading, first_observation))
 
     def _extract_financial_snapshot_cards(items: list[str]) -> list[tuple[str, str]]:
         cards: list[tuple[str, str]] = []
@@ -228,6 +236,14 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         body_parts.append('</article>')
         return ''.join(body_parts)
 
+    deduped_quick_brief_cards: list[tuple[str, str]] = []
+    seen_quick_brief_labels: set[str] = set()
+    for label, value in quick_brief_cards:
+        if not value or label in seen_quick_brief_labels:
+            continue
+        deduped_quick_brief_cards.append((label, value))
+        seen_quick_brief_labels.add(label)
+
     body_parts: list[str] = [f'<article class="report-card"><header class="report-header"><h1>{escape(title)}</h1>']
     if badges:
         body_parts.append(f'<div class="report-badges">{"".join(badges)}</div>')
@@ -240,6 +256,16 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         for label, value in insight_cards:
             body_parts.append(
                 f'<article class="insight-card"><span class="insight-label">{escape(label)}</span><strong>{escape(value)}</strong></article>'
+            )
+        body_parts.append('</div></section>')
+
+    if deduped_quick_brief_cards:
+        body_parts.append('<section class="quick-brief" aria-label="決策速讀">')
+        body_parts.append('<div class="quick-brief-title">決策速讀</div>')
+        body_parts.append('<div class="quick-brief-grid">')
+        for label, value in deduped_quick_brief_cards:
+            body_parts.append(
+                f'<article class="quick-brief-card"><span class="quick-brief-label">{escape(label)}</span><strong>{escape(value)}</strong></article>'
             )
         body_parts.append('</div></section>')
 
