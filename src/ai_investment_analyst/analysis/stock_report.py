@@ -214,7 +214,7 @@ def load_market_context_from_yfinance(ticker: str, limit: int = 10) -> StockRepo
             latest_revenue = RevenuePoint(
                 revenue_period="live-info",
                 revenue=Decimal(str(trailing_revenue)) if trailing_revenue is not None else None,
-                revenue_month_change_percent=Decimal("0") if revenue_growth is not None else None,
+                revenue_month_change_percent=None,
                 revenue_year_change_percent=Decimal(str(revenue_growth)) * Decimal("100") if revenue_growth is not None else None,
             )
         if any(value is not None for value in [trailing_revenue, trailing_net_income, trailing_eps]):

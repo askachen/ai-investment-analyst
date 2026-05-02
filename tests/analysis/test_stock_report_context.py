@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+import pandas as pd
+
+from ai_investment_analyst.analysis import stock_report
 from ai_investment_analyst.analysis.stock_report import (
     FinancialSummary,
     PricePoint,
@@ -7,6 +10,7 @@ from ai_investment_analyst.analysis.stock_report import (
     StockReportContext,
     build_report_facts,
     candidate_market_tickers,
+    load_market_context_from_yfinance,
 )
 
 
@@ -56,3 +60,32 @@ def test_build_report_facts_derives_rating_and_risk_flags():
 def test_candidate_market_tickers_adds_tw_alias_for_numeric_symbols():
     assert candidate_market_tickers("2330") == ["2330", "2330.TW"]
     assert candidate_market_tickers("AAPL") == ["AAPL"]
+
+
+def test_load_market_context_from_yfinance_leaves_monthly_revenue_change_unknown(monkeypatch):
+    history = pd.DataFrame(
+        {"Close": [100.0, 101.0, 102.5]},
+        index=pd.to_datetime(["2026-04-01", "2026-04-02", "2026-04-03"]),
+    )
+
+    class FakeTicker:
+        info = {
+            "totalRevenue": 123456789,
+            "netIncomeToCommon": 9876543,
+            "trailingEps": 12.34,
+            "revenueGrowth": 0.351,
+        }
+
+        def history(self, period: str, interval: str, auto_adjust: bool):
+            assert period == "1mo"
+            assert interval == "1d"
+            assert auto_adjust is False
+            return history
+
+    monkeypatch.setattr(stock_report.yf, "Ticker", lambda ticker: FakeTicker())
+
+    context = load_market_context_from_yfinance("2330")
+
+    assert context.latest_revenue is not None
+    assert context.latest_revenue.revenue_year_change_percent == Decimal("35.100")
+    assert context.latest_revenue.revenue_month_change_percent is None

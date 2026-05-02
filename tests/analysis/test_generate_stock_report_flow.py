@@ -89,3 +89,29 @@ def test_generate_stock_report_uses_market_fallback_when_db_loader_fails():
 
     assert "【個股分析報告】2330" in report
     assert "投資評級" in report
+
+
+def test_generate_stock_report_does_not_claim_zero_monthly_revenue_change_when_unknown():
+    context = make_context()
+    context = StockReportContext(
+        ticker=context.ticker,
+        latest=context.latest,
+        recent_prices=context.recent_prices,
+        latest_revenue=RevenuePoint(
+            revenue_period=context.latest_revenue.revenue_period,
+            revenue=context.latest_revenue.revenue,
+            revenue_month_change_percent=None,
+            revenue_year_change_percent=context.latest_revenue.revenue_year_change_percent,
+        ),
+        latest_financial_summary=context.latest_financial_summary,
+    )
+
+    report = generate_stock_report(
+        "2330",
+        context_loader=lambda ticker: context,
+        news_fetcher=lambda ticker, count=3: [],
+        report_client=FakeClient(should_fail=True),
+    )
+
+    assert "月營收 MoM：N/A" in report
+    assert "月營收 MoM：0.00%" not in report
