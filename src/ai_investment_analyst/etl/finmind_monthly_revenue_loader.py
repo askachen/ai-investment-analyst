@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -119,7 +120,37 @@ def fetch_monthly_revenue(stock_id: str, start_date: str) -> list[dict[str, Any]
     payload = response.json()
     if payload.get("status") != 200:
         raise ValueError(f"FinMind TaiwanStockMonthRevenue failed: {payload}")
-    return payload.get("data", [])
+    return enrich_growth_fields(payload.get("data", []))
+
+
+def enrich_growth_fields(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    enriched_rows = [deepcopy(row) for row in rows]
+    revenue_by_period: dict[tuple[int, int], Decimal | None] = {}
+    for row in enriched_rows:
+        revenue_by_period[(int(row["revenue_year"]), int(row["revenue_month"]))] = decimal_or_none(row.get("revenue"))
+
+    for row in enriched_rows:
+        current_value = decimal_or_none(row.get("revenue"))
+        month_change = decimal_or_none(row.get("revenue_month_change_percent"))
+        year_change = decimal_or_none(row.get("revenue_year_change_percent"))
+        revenue_year = int(row["revenue_year"])
+        revenue_month = int(row["revenue_month"])
+
+        if month_change is None:
+            previous_period = (revenue_year - 1, 12) if revenue_month == 1 else (revenue_year, revenue_month - 1)
+            month_change = _pct_change(current_value, revenue_by_period.get(previous_period))
+        if year_change is None:
+            year_change = _pct_change(current_value, revenue_by_period.get((revenue_year - 1, revenue_month)))
+
+        row["revenue_month_change_percent"] = month_change
+        row["revenue_year_change_percent"] = year_change
+    return enriched_rows
+
+
+def _pct_change(current_value: Decimal | None, previous_value: Decimal | None) -> Decimal | None:
+    if current_value is None or previous_value in (None, Decimal("0")):
+        return None
+    return ((current_value - previous_value) / previous_value) * Decimal("100")
 
 
 def upsert_monthly_revenue(cur, *, symbol_id: str, data_source_id: str, ingestion_run_id: str, row: dict[str, Any]) -> None:
