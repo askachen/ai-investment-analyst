@@ -162,3 +162,29 @@ def test_render_report_html_builds_observation_radar_for_catalysts_and_risks():
     assert 'GB200 水冷模組出貨升溫。' in html
     assert '客戶拉貨節奏仍需持續追蹤。' in html
     assert '高階散熱市場競爭升溫。' in html
+
+
+def test_render_report_html_promotes_analyst_takeaway_and_risk_focus():
+    report = """【個股分析報告】2382 廣達
+投資評級：買進
+信心等級：中高
+
+一句話投資主軸
+AI 伺服器出貨動能延續。
+
+風險提示
+- 雲端客戶資本支出若遞延，短線修正壓力將升高。
+- 毛利率改善速度可能低於市場預期。
+
+分析師觀點
+未來兩季若 AI 伺服器良率與出貨同步改善，評價有望重新上修。"""
+
+    html = render_report_html(report)
+
+    assert '<section class="analyst-takeaway" aria-label="分析師快速結論">' in html
+    assert '<div class="analyst-takeaway-title">分析師快速結論</div>' in html
+    assert '未來兩季若 AI 伺服器良率與出貨同步改善，評價有望重新上修。' in html
+    assert '<section class="risk-focus" aria-label="風險提示重點">' in html
+    assert '<div class="risk-focus-title">風險提示重點</div>' in html
+    assert '雲端客戶資本支出若遞延，短線修正壓力將升高。' in html
+    assert '毛利率改善速度可能低於市場預期。' in html

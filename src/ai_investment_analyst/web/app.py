@@ -154,6 +154,8 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
     insight_cards: list[tuple[str, str]] = []
     scenario_sections: list[tuple[str, list[str], list[str]]] = []
     observation_sections: list[tuple[str, str, list[str], list[str]]] = []
+    analyst_takeaway: str | None = None
+    risk_focus_items: list[str] = []
     observation_tones = {
         '利多催化': 'bull',
         '中性觀察': 'neutral',
@@ -172,6 +174,10 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
                     insight_cards.append(('合理價區間', item))
         elif heading == '目標價推導' and paragraph_items:
             insight_cards.append(('目標價推導', paragraph_items[0]))
+        elif heading in {'分析師觀點', '投資建議', '結論'} and analyst_takeaway is None:
+            analyst_takeaway = next((item for item in [*paragraph_items, *bullet_items] if item.strip()), None)
+        elif heading == '風險提示' and (bullet_items or paragraph_items):
+            risk_focus_items = [item for item in [*bullet_items, *paragraph_items] if item.strip()]
         elif heading in {'Bull Case', 'Base Case', 'Bear Case'}:
             scenario_sections.append((heading, bullet_items, paragraph_items))
         elif heading in observation_tones and (bullet_items or paragraph_items):
@@ -252,6 +258,20 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         for heading, tone, bullet_items, paragraph_items in observation_sections:
             body_parts.append(_render_observation_card(heading, tone, bullet_items, paragraph_items))
         body_parts.append('</div></section>')
+
+    if analyst_takeaway:
+        body_parts.append('<section class="analyst-takeaway" aria-label="分析師快速結論">')
+        body_parts.append('<div class="analyst-takeaway-title">分析師快速結論</div>')
+        body_parts.append(f'<p class="analyst-takeaway-text">{escape(analyst_takeaway)}</p>')
+        body_parts.append('</section>')
+
+    if risk_focus_items:
+        body_parts.append('<section class="risk-focus" aria-label="風險提示重點">')
+        body_parts.append('<div class="risk-focus-title">風險提示重點</div>')
+        body_parts.append('<ul class="risk-focus-list">')
+        for item in risk_focus_items:
+            body_parts.append(f'<li>{escape(item)}</li>')
+        body_parts.append('</ul></section>')
 
     if len(sections) > 1:
         body_parts.append('<nav class="report-nav" aria-label="報告章節快速導覽"><span class="report-nav-label">快速導覽</span><div class="report-nav-links">')
