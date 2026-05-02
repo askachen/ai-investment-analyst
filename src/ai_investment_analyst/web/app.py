@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 import requests
 import yfinance as yf
 
-from ai_investment_analyst.analysis.screener import get_strategy_profile, list_strategy_profiles
+from ai_investment_analyst.analysis.screener import calculate_total_score, get_strategy_profile, list_strategy_profiles
 from ai_investment_analyst.analysis.stock_report import candidate_market_tickers
 from ai_investment_analyst.analysis.stock_report import generate_stock_report
 from ai_investment_analyst.db.connection import get_connection
@@ -27,6 +27,24 @@ SESSION_COOKIE_NAME = 'session'
 SESSION_COOKIE_VALUE = 'authenticated'
 TWSE_NAME_URL = 'https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=json'
 TPEX_NAME_URL = 'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes'
+BUILTIN_TAIWAN_STOCK_NAMES = {
+    '1101': '台泥',
+    '1216': '統一',
+    '1303': '南亞',
+    '2303': '聯電',
+    '2308': '台達電',
+    '2317': '鴻海',
+    '2330': '台積電',
+    '2382': '廣達',
+    '2412': '中華電',
+    '2454': '聯發科',
+    '2603': '長榮',
+    '2881': '富邦金',
+    '2882': '國泰金',
+    '3034': '聯詠',
+    '3711': '日月光投控',
+    '6505': '台塑化',
+}
 
 
 class ReportRequest(BaseModel):
@@ -288,6 +306,9 @@ def resolve_stock_name(ticker: str) -> str | None:
         db_name = load_symbol_display_name_from_db(ticker)
         if db_name:
             return db_name
+        builtin_name = lookup_builtin_taiwan_stock_name(ticker)
+        if builtin_name:
+            return builtin_name
     candidates = candidate_market_tickers(ticker)
     if ticker.isdigit():
         tw_symbol = f'{ticker}.TW'
@@ -335,7 +356,11 @@ def _load_taiwan_stock_name_map() -> dict[str, str]:
 
 
 def lookup_taiwan_stock_name(ticker: str) -> str | None:
-    return _load_taiwan_stock_name_map().get(ticker)
+    return _load_taiwan_stock_name_map().get(ticker) or BUILTIN_TAIWAN_STOCK_NAMES.get(ticker)
+
+
+def lookup_builtin_taiwan_stock_name(ticker: str) -> str | None:
+    return BUILTIN_TAIWAN_STOCK_NAMES.get(ticker)
 
 
 def load_symbol_display_name_from_db(ticker: str) -> str | None:
@@ -379,6 +404,47 @@ def enrich_screener_snapshot(snapshot: dict) -> dict:
     return {
         **snapshot,
         'results': enriched_results,
+    }
+
+
+def _decimal_factor_scores(result: dict) -> dict[str, Decimal]:
+    factor_scores = result.get('factor_scores') or {}
+    decimals: dict[str, Decimal] = {}
+    for key, value in factor_scores.items():
+        try:
+            decimals[key] = Decimal(str(value))
+        except Exception:
+            continue
+    return decimals
+
+
+def rerank_screener_snapshot(snapshot: dict, strategy_key: str) -> dict | None:
+    active_strategy = get_strategy_profile(strategy_key)
+    reranked_results = []
+    for result in snapshot.get('results', []):
+        factor_scores = _decimal_factor_scores(result)
+        if not factor_scores:
+            return None
+        item = dict(result)
+        item['factor_scores'] = {key: str(value) for key, value in factor_scores.items()}
+        item['total_score'] = str(calculate_total_score(factor_scores, active_strategy.weights))
+        reranked_results.append(item)
+    reranked_results.sort(
+        key=lambda item: (
+            Decimal(str(item.get('total_score', '0'))),
+            Decimal(str((item.get('factor_scores') or {}).get('momentum', '0'))),
+            str(item.get('ticker', '')),
+        ),
+        reverse=True,
+    )
+    for index, item in enumerate(reranked_results, start=1):
+        item['rank'] = index
+    return {
+        **snapshot,
+        'strategy': _serialize_strategy(active_strategy.key),
+        'strategies': snapshot.get('strategies') or _list_serialized_strategies(),
+        'candidate_count': len(reranked_results),
+        'results': reranked_results,
     }
 
 
@@ -540,6 +606,10 @@ def get_latest_screener(request: Request, strategy: str = 'balanced'):
     active_strategy = get_strategy_profile(strategy)
     try:
         snapshot = load_latest_screener_snapshot(active_strategy.key)
+        if snapshot is None and active_strategy.key != 'balanced':
+            balanced_snapshot = load_latest_screener_snapshot('balanced')
+            if balanced_snapshot is not None:
+                snapshot = rerank_screener_snapshot(balanced_snapshot, active_strategy.key)
     except Exception:
         snapshot = None
     if snapshot is None:

@@ -74,4 +74,5 @@ def test_index_page_contains_form():
     assert 'compact-meta-grid' not in response.text
     assert '<span class="detail-section-title">模型</span>' not in response.text
     assert '進入完整報告' in response.text
+    assert response.text.count('<div class="metric-row"><span class="metric-label">收盤價</span><span class="metric-value">${escapeHtml(closePrice)}</span></div>') == 1
     assert 'function buildScreenerTable(payload)' in response.text

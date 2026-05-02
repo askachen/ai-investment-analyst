@@ -250,3 +250,76 @@ def test_latest_screener_api_supports_strategy_reranking(monkeypatch):
     assert payload['strategy']['weights']['valuation'] == '40%'
     assert payload['results'][0]['ticker'] == 'VALUE'
     assert payload['results'][0]['rank'] == 1
+
+
+def test_latest_screener_api_falls_back_to_reranked_balanced_snapshot_when_strategy_snapshot_missing(monkeypatch):
+    calls = []
+    monkeypatch.setattr('ai_investment_analyst.web.app.resolve_screener_display_name', lambda ticker: None)
+
+    def fake_load_latest_screener_snapshot(strategy='balanced'):
+        calls.append(strategy)
+        if strategy == 'growth':
+            return None
+        if strategy == 'balanced':
+            return {
+                'run_date': '2026-05-01',
+                'generated_at': '2026-05-01T01:10:00+00:00',
+                'strategy': {
+                    'key': 'balanced',
+                    'label': '平衡多因子',
+                    'description': 'balanced snapshot',
+                    'weights': {
+                        'momentum': '25%',
+                        'revenue': '30%',
+                        'quality': '15%',
+                        'valuation': '20%',
+                        'liquidity': '10%',
+                    },
+                },
+                'strategies': [],
+                'results': [
+                    {
+                        'rank': 1,
+                        'ticker': 'VALUE',
+                        'total_score': '70.00',
+                        'close_price': '85',
+                        'factor_scores': {
+                            'momentum': '10',
+                            'revenue': '30',
+                            'quality': '90',
+                            'valuation': '100',
+                            'liquidity': '10',
+                        },
+                        'reasons': ['value'],
+                    },
+                    {
+                        'rank': 2,
+                        'ticker': 'GROWTH',
+                        'total_score': '68.00',
+                        'close_price': '120',
+                        'factor_scores': {
+                            'momentum': '90',
+                            'revenue': '95',
+                            'quality': '40',
+                            'valuation': '20',
+                            'liquidity': '10',
+                        },
+                        'reasons': ['growth'],
+                    },
+                ],
+            }
+        return None
+
+    monkeypatch.setattr('ai_investment_analyst.web.app.load_latest_screener_snapshot', fake_load_latest_screener_snapshot)
+
+    client = TestClient(app)
+    response = client.get('/api/screener/latest?strategy=growth')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert calls == ['growth', 'balanced']
+    assert payload['strategy']['key'] == 'growth'
+    assert payload['results'][0]['ticker'] == 'GROWTH'
+    assert payload['results'][0]['rank'] == 1
+    assert payload['results'][1]['ticker'] == 'VALUE'
+    assert payload['results'][1]['rank'] == 2
