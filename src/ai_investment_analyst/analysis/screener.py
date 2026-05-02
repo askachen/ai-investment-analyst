@@ -25,9 +25,9 @@ class ScreeningCandidate:
     close_price: Decimal
     price_5d_change_pct: Decimal
     price_10d_change_pct: Decimal
-    average_volume_5d: int
+    average_volume_5d: int | None
     revenue_yoy_pct: Decimal
-    revenue_mom_pct: Decimal
+    revenue_mom_pct: Decimal | None
     eps: Decimal
     pe_ratio: Decimal
     pb_ratio: Decimal | None = None
@@ -137,7 +137,8 @@ def _momentum_score(candidate: ScreeningCandidate) -> Decimal:
 
 
 def _revenue_score(candidate: ScreeningCandidate) -> Decimal:
-    raw = (candidate.revenue_yoy_pct * Decimal("3")) + (candidate.revenue_mom_pct * Decimal("4")) + Decimal("20")
+    revenue_mom_pct = candidate.revenue_mom_pct or ZERO
+    raw = (candidate.revenue_yoy_pct * Decimal("3")) + (revenue_mom_pct * Decimal("4")) + Decimal("20")
     return _clamp_score(raw)
 
 
@@ -157,7 +158,7 @@ def _valuation_score(candidate: ScreeningCandidate) -> Decimal:
 
 
 def _liquidity_score(candidate: ScreeningCandidate) -> Decimal:
-    if candidate.average_volume_5d <= 0:
+    if candidate.average_volume_5d in (None, 0) or candidate.average_volume_5d < 0:
         return ZERO
     raw = Decimal(candidate.average_volume_5d) / Decimal("500000")
     return _clamp_score(raw)
@@ -185,16 +186,26 @@ def calculate_total_score(
 
 
 def _build_reasons(candidate: ScreeningCandidate) -> list[str]:
+    revenue_reason = (
+        f"月營收年增 {_quantize_2(candidate.revenue_yoy_pct)}%，月增 {_quantize_2(candidate.revenue_mom_pct)}%。"
+        if candidate.revenue_mom_pct is not None
+        else f"月營收年增 {_quantize_2(candidate.revenue_yoy_pct)}%，月營收 MoM 資料尚缺。"
+    )
+    liquidity_reason = (
+        f"近 5 日平均量 {candidate.average_volume_5d:,} 股，流動性可支撐中期觀察。"
+        if candidate.average_volume_5d is not None and candidate.average_volume_5d > 0
+        else "近 5 日成交量資料尚缺，目前流動性分數先以保守方式處理。"
+    )
     reasons = [
         f"近 5 日漲幅 {_quantize_2(candidate.price_5d_change_pct)}%，近 10 日漲幅 {_quantize_2(candidate.price_10d_change_pct)}%，動能維持正向。"
         if candidate.price_10d_change_pct >= ZERO
         else f"近 10 日動能 {_quantize_2(candidate.price_10d_change_pct)}%，短線仍需觀察。",
-        f"月營收年增 {_quantize_2(candidate.revenue_yoy_pct)}%，月增 {_quantize_2(candidate.revenue_mom_pct)}%。",
+        revenue_reason,
         f"EPS {_quantize_2(candidate.eps)} 元，獲利維持正值。"
         if candidate.eps > ZERO
         else f"EPS {_quantize_2(candidate.eps)} 元，獲利動能不足。",
         f"本益比 {_quantize_2(candidate.pe_ratio)} 倍，估值仍在可比較區間內。",
-        f"近 5 日平均量 {candidate.average_volume_5d:,} 股，流動性可支撐中期觀察。",
+        liquidity_reason,
     ]
     if candidate.pb_ratio is None:
         reasons.append("PB 資料尚缺，目前估值分數先以 PE 為主。")
@@ -204,11 +215,12 @@ def _build_reasons(candidate: ScreeningCandidate) -> list[str]:
 
 
 def _passes(candidate: ScreeningCandidate, criteria: ScreeningCriteria) -> bool:
+    average_volume_5d = candidate.average_volume_5d or 0
     return (
         candidate.revenue_yoy_pct >= criteria.min_revenue_yoy_pct
         and candidate.eps >= criteria.min_eps
         and candidate.pe_ratio <= criteria.max_pe_ratio
-        and candidate.average_volume_5d >= criteria.min_average_volume_5d
+        and average_volume_5d >= criteria.min_average_volume_5d
     )
 
 
@@ -235,7 +247,7 @@ def _latest_average_volume_5d_from_db(ticker: str) -> int:
 def load_screener_candidates(
     tickers: list[str],
     context_loader: Callable[[str], StockReportContext] = load_stock_report_context,
-    volume_loader: Callable[[str], int] = _latest_average_volume_5d_from_db,
+    volume_loader: Callable[[str], int | None] = _latest_average_volume_5d_from_db,
     pb_ratio_loader: Callable[[str], Decimal | None] | None = None,
 ) -> list[ScreeningCandidate]:
     candidates: list[ScreeningCandidate] = []
@@ -266,7 +278,9 @@ def load_screener_candidates(
                 price_10d_change_pct=price_10d_change_pct,
                 average_volume_5d=volume_loader(ticker),
                 revenue_yoy_pct=_quantize_2(context.latest_revenue.revenue_year_change_percent or ZERO),
-                revenue_mom_pct=_quantize_2(context.latest_revenue.revenue_month_change_percent or ZERO),
+                revenue_mom_pct=_quantize_2(context.latest_revenue.revenue_month_change_percent)
+                if context.latest_revenue.revenue_month_change_percent is not None
+                else None,
                 eps=_quantize_2(eps),
                 pe_ratio=pe_ratio,
                 pb_ratio=_quantize_2(pb_ratio) if pb_ratio is not None else None,

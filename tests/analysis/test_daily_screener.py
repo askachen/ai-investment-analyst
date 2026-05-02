@@ -83,6 +83,44 @@ def test_generate_daily_screening_uses_market_fallback_when_db_loader_fails():
     assert snapshot.results[0].ticker == '2330'
 
 
+def test_generate_daily_screening_marks_missing_market_fallback_metrics_as_unknown():
+    fallback_context = StockReportContext(
+        ticker='2330',
+        latest=PricePoint(trading_date='2026-04-21', close_price=Decimal('850'), source_code='yfinance-live'),
+        recent_prices=[
+            PricePoint(trading_date=f'2026-04-{21-index:02d}', close_price=Decimal(value), source_code='yfinance-live')
+            for index, value in enumerate(['850', '840', '830', '820', '800', '790', '780', '770', '760', '750'])
+        ],
+        latest_revenue=RevenuePoint(
+            revenue_period='live-info',
+            revenue=Decimal('1000000000'),
+            revenue_month_change_percent=None,
+            revenue_year_change_percent=Decimal('22.3'),
+        ),
+        latest_financial_summary=FinancialSummary(
+            report_date='2025-12-31',
+            revenue=Decimal('3000000000'),
+            net_income=Decimal('500000000'),
+            eps=Decimal('10.25'),
+        ),
+    )
+
+    snapshot = generate_daily_screening(
+        ticker_loader=lambda: ['2330'],
+        context_loader=lambda ticker: (_ for _ in ()).throw(RuntimeError('db down')),
+        market_context_loader=lambda ticker: fallback_context,
+        volume_loader=lambda ticker: (_ for _ in ()).throw(RuntimeError('volume table missing')),
+        pb_ratio_loader=lambda ticker: Decimal('4.8'),
+        snapshot_saver=lambda snapshot: snapshot,
+    )
+
+    reasons = snapshot.results[0].reasons
+    assert any('月營收 MoM 資料尚缺' in reason for reason in reasons)
+    assert any('成交量資料尚缺' in reason for reason in reasons)
+    assert not any('月增 0.00%' in reason for reason in reasons)
+    assert not any('平均量 0 股' in reason for reason in reasons)
+
+
 def test_generate_daily_screening_supports_independent_strategy_snapshots():
     contexts = {
         'GROWTH': make_context('GROWTH', '120', ['120', '119', '118', '117', '116', '114', '112', '111', '110', '108'], '30.0', '12.0', '4.0'),

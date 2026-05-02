@@ -44,12 +44,12 @@ class DailyScreeningSnapshot:
     results: list[DailyScreeningResult]
 
 
-def _safe_volume_loader(volume_loader: Callable[[str], int]) -> Callable[[str], int]:
-    def wrapper(ticker: str) -> int:
+def _safe_volume_loader(volume_loader: Callable[[str], int | None]) -> Callable[[str], int | None]:
+    def wrapper(ticker: str) -> int | None:
         try:
             return volume_loader(ticker)
         except Exception:
-            return 0
+            return None
 
     return wrapper
 
@@ -99,7 +99,7 @@ def generate_daily_screening(
     ticker_loader: Callable[[], list[str]] = list_default_screening_tickers,
     context_loader: Callable[[str], StockReportContext] = load_stock_report_context,
     market_context_loader: Callable[[str], StockReportContext] = load_market_context_from_yfinance,
-    volume_loader: Callable[[str], int] | None = None,
+    volume_loader: Callable[[str], int | None] | None = None,
     pb_ratio_loader: Callable[[str], Decimal | None] | None = None,
     criteria: ScreeningCriteria | None = None,
     strategy: str = 'balanced',
@@ -132,7 +132,7 @@ def generate_all_daily_screenings(
     ticker_loader: Callable[[], list[str]] = list_default_screening_tickers,
     context_loader: Callable[[str], StockReportContext] = load_stock_report_context,
     market_context_loader: Callable[[str], StockReportContext] = load_market_context_from_yfinance,
-    volume_loader: Callable[[str], int] | None = None,
+    volume_loader: Callable[[str], int | None] | None = None,
     pb_ratio_loader: Callable[[str], Decimal | None] | None = None,
     criteria: ScreeningCriteria | None = None,
     snapshot_saver: Callable[[DailyScreeningSnapshot], object] = save_screening_snapshot,

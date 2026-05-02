@@ -122,6 +122,33 @@ def test_score_candidates_keeps_pb_optional_without_blocking_rank():
     assert any("PB 資料尚缺" in reason for reason in ranked[0].reasons)
 
 
+def test_score_candidates_marks_missing_revenue_mom_and_liquidity_as_unknown():
+    ranked = score_candidates(
+        [
+            ScreeningCandidate(
+                ticker="2330",
+                close_price=Decimal("850"),
+                price_5d_change_pct=Decimal("6.25"),
+                price_10d_change_pct=Decimal("13.33"),
+                average_volume_5d=None,
+                revenue_yoy_pct=Decimal("22.3"),
+                revenue_mom_pct=None,
+                eps=Decimal("10.25"),
+                pe_ratio=Decimal("18.0"),
+                pb_ratio=Decimal("4.8"),
+            )
+        ],
+        ScreeningCriteria(),
+    )
+
+    assert ranked[0].factor_scores["revenue"] > Decimal("0")
+    assert ranked[0].factor_scores["liquidity"] == Decimal("0")
+    assert any("月營收 MoM 資料尚缺" in reason for reason in ranked[0].reasons)
+    assert any("成交量資料尚缺" in reason for reason in ranked[0].reasons)
+    assert not any("月增 0.00%" in reason for reason in ranked[0].reasons)
+    assert not any("平均量 0 股" in reason for reason in ranked[0].reasons)
+
+
 def make_context(
     ticker: str,
     close_price: str,
