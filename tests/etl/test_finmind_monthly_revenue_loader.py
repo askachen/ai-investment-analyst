@@ -1,6 +1,7 @@
+import json
 from decimal import Decimal
 
-from ai_investment_analyst.etl.finmind_monthly_revenue_loader import enrich_growth_fields
+from ai_investment_analyst.etl.finmind_monthly_revenue_loader import decimal_or_none, enrich_growth_fields
 
 
 def test_enrich_growth_fields_derives_month_over_month_and_year_over_year_percentages():
@@ -12,8 +13,8 @@ def test_enrich_growth_fields_derives_month_over_month_and_year_over_year_percen
 
     enriched = enrich_growth_fields(rows)
 
-    assert enriched[0]["revenue_month_change_percent"] == Decimal("20.0")
-    assert enriched[0]["revenue_year_change_percent"] == Decimal("50.0")
+    assert decimal_or_none(enriched[0]["revenue_month_change_percent"]) == Decimal("20.0")
+    assert decimal_or_none(enriched[0]["revenue_year_change_percent"]) == Decimal("50.0")
     assert enriched[1]["revenue_month_change_percent"] is None
     assert enriched[1]["revenue_year_change_percent"] is None
 
@@ -33,5 +34,17 @@ def test_enrich_growth_fields_preserves_existing_growth_values():
 
     enriched = enrich_growth_fields(rows)
 
-    assert enriched[0]["revenue_month_change_percent"] == Decimal("19.8")
-    assert enriched[0]["revenue_year_change_percent"] == Decimal("35.1")
+    assert decimal_or_none(enriched[0]["revenue_month_change_percent"]) == Decimal("19.8")
+    assert decimal_or_none(enriched[0]["revenue_year_change_percent"]) == Decimal("35.1")
+
+
+def test_enrich_growth_fields_output_stays_json_serializable_for_raw_payload_storage():
+    rows = [
+        {"revenue_year": 2026, "revenue_month": 3, "revenue": 1200},
+        {"revenue_year": 2026, "revenue_month": 2, "revenue": 1000},
+        {"revenue_year": 2025, "revenue_month": 3, "revenue": 800},
+    ]
+
+    enriched = enrich_growth_fields(rows)
+
+    json.dumps(enriched)

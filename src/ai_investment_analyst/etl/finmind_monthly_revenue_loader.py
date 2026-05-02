@@ -142,8 +142,8 @@ def enrich_growth_fields(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if year_change is None:
             year_change = _pct_change(current_value, revenue_by_period.get((revenue_year - 1, revenue_month)))
 
-        row["revenue_month_change_percent"] = month_change
-        row["revenue_year_change_percent"] = year_change
+        row["revenue_month_change_percent"] = _decimal_to_json_value(month_change)
+        row["revenue_year_change_percent"] = _decimal_to_json_value(year_change)
     return enriched_rows
 
 
@@ -151,6 +151,12 @@ def _pct_change(current_value: Decimal | None, previous_value: Decimal | None) -
     if current_value is None or previous_value in (None, Decimal("0")):
         return None
     return ((current_value - previous_value) / previous_value) * Decimal("100")
+
+
+def _decimal_to_json_value(value: Decimal | None) -> str | None:
+    if value is None:
+        return None
+    return format(value, 'f')
 
 
 def upsert_monthly_revenue(cur, *, symbol_id: str, data_source_id: str, ingestion_run_id: str, row: dict[str, Any]) -> None:
