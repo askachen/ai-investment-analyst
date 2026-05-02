@@ -1,12 +1,15 @@
-from ai_investment_analyst.analysis.daily_screener import generate_all_daily_screenings
+from ai_investment_analyst.analysis.daily_screener_job import run_daily_screener_job
 
 
 if __name__ == "__main__":
-    snapshots = generate_all_daily_screenings()
-    for snapshot in snapshots:
+    result = run_daily_screener_job()
+    print(f"Upstream refresh completed for {len(result.tickers)} tickers: {', '.join(result.tickers)}")
+    for dataset_name, summary in result.source_refresh.items():
+        print(f"[{dataset_name}] {summary}")
+    for snapshot in result.snapshots:
         print(
             f"Daily screener [{snapshot.strategy_key}] generated for {snapshot.run_date} "
             f"({snapshot.candidate_count} candidates)."
         )
-        for result in snapshot.results[:10]:
-            print(f"{result.rank}. {result.ticker} | score={result.total_score}")
+        for entry in snapshot.results[:10]:
+            print(f"{entry.rank}. {entry.ticker} | score={entry.total_score}")
