@@ -60,6 +60,16 @@ def test_index_page_contains_form():
     assert 'function buildStrategyTabs(payload)' in response.text
     assert 'function buildStrategyWeightChips(strategy)' in response.text
     assert 'function buildWeightSummaryText(weights)' in response.text
+    assert 'buildScreenerSnapshot(payload)' in response.text
+    assert 'snapshot-strip' in response.text
+    assert 'snapshot-card' in response.text
+    assert 'snapshot-label' in response.text
+    assert 'snapshot-value' in response.text
+    assert '股票池' in response.text
+    assert '候選名單' in response.text
+    assert '排行檢視' in response.text
+    assert 'payload.results.length' in response.text
+    assert 'payload.universe_size ?? payload.results.length ??' in response.text
     assert '成長動能' in response.text
     assert '價值穩健' in response.text
     assert '流動性強勢' in response.text

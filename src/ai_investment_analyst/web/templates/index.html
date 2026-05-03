@@ -218,6 +218,42 @@
         color: #ffffff;
       }
 
+      .snapshot-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        padding: 18px 22px 0;
+      }
+
+      .snapshot-card {
+        display: grid;
+        gap: 6px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+      }
+
+      .snapshot-label {
+        color: #9db2d1;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+
+      .snapshot-value {
+        color: #f8fbff;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .snapshot-note {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
       .screener-scroll {
         overflow-x: auto;
       }
@@ -1461,6 +1497,45 @@
         return `總分：綜合五個因子加權後的結果。此策略權重為 ${summary}。`;
       }
 
+      function buildScreenerSnapshot(payload) {
+        const candidateCount = payload.candidate_count ?? payload.results.length ?? 'N/A';
+        const universeSize = payload.universe_size ?? payload.results.length ?? 'N/A';
+        const visibleCount = payload.results.length;
+        const cards = [
+          {
+            label: '更新日',
+            value: payload.run_date || 'N/A',
+            note: payload.generated_at || '等待最新批次',
+          },
+          {
+            label: '股票池',
+            value: String(universeSize),
+            note: '本次評分覆蓋的股票數量',
+          },
+          {
+            label: '候選名單',
+            value: String(candidateCount),
+            note: '通過條件後進入排名的股票',
+          },
+          {
+            label: '排行檢視',
+            value: `前 ${visibleCount} 名`,
+            note: payload.strategy?.label || '平衡多因子',
+          },
+        ];
+        return `
+          <div class="snapshot-strip">
+            ${cards.map((card) => `
+              <article class="snapshot-card">
+                <span class="snapshot-label">${escapeHtml(card.label)}</span>
+                <strong class="snapshot-value">${escapeHtml(card.value)}</strong>
+                <span class="snapshot-note">${escapeHtml(card.note)}</span>
+              </article>
+            `).join('')}
+          </div>
+        `;
+      }
+
       function buildFactorExplanationList(factorScores, weights) {
         const entries = Object.entries(factorScores || {});
         if (entries.length === 0) {
@@ -1605,11 +1680,8 @@
           screener.style.margin = '0';
           screener.style.border = '0';
           screener.style.background = 'transparent';
-          const generatedLabel = payload.run_date || 'N/A';
-          const timestampLabel = payload.generated_at || '';
-          const strategyLabel = payload.strategy?.label || '平衡多因子';
           screener.innerHTML = `
-            <div style="padding: 18px 22px 0;" class="muted">策略更新日：${escapeHtml(generatedLabel)}　${escapeHtml(timestampLabel)}　｜　候選數：${escapeHtml(payload.candidate_count ?? 'N/A')}　｜　目前策略：${escapeHtml(strategyLabel)}</div>
+            ${buildScreenerSnapshot(payload)}
             ${buildScreenerTable(payload)}
           `;
         } catch (error) {
