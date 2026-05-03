@@ -71,8 +71,10 @@ def test_render_report_html_adds_quick_navigation_and_lead_section():
 AI 需求推升先進製程報價與產能利用率。
 
 重點摘要
-- 短中期動能穩定。
-- 現金流與獲利能力同步改善。
+目前多空訊號分歧。
+
+重點摘要（條列）
+- 最新收盤價 820.00，資料日期 2025-05-01。
 
 估值觀察
 本益比已位於區間上緣。
@@ -95,6 +97,10 @@ AI 需求推升先進製程報價與產能利用率。
     assert '<section class="report-insights" aria-label="投資重點速覽">' in html
     assert '<span class="insight-label">評價標籤</span>' in html
     assert '<strong>偏高</strong>' in html
+    assert '<span class="insight-label">最新收盤價</span>' in html
+    assert '<strong>820.00 元</strong>' in html
+    assert '<span class="insight-label">目標價空間</span>' in html
+    assert '<strong>+20.7%</strong>' in html
     assert '合理價區間：約 950 - 1,080 元。' in html
     assert '目標價約 990 元。' in html
 

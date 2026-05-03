@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from html import escape
 import os
+import re
 from secrets import compare_digest
 from pathlib import Path
 from datetime import datetime, timezone
@@ -151,12 +152,56 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
     def display_heading(heading: str) -> str:
         return scenario_heading_labels.get(heading, heading)
 
+    def _extract_decimal_from_text(text: str, pattern: str) -> Decimal | None:
+        match = re.search(pattern, text)
+        if not match:
+            return None
+        try:
+            return Decimal(match.group(1).replace(',', ''))
+        except Exception:
+            return None
+
+    def _extract_latest_close_price(items: list[str]) -> Decimal | None:
+        for item in items:
+            if '最新收盤價' not in item:
+                continue
+            value = _extract_decimal_from_text(item, r'最新收盤價\s*([0-9][0-9,]*(?:\.[0-9]+)?)')
+            if value is not None:
+                return value
+        return None
+
+    def _extract_target_price(items: list[str]) -> Decimal | None:
+        for item in items:
+            value = _extract_decimal_from_text(item, r'目標價約\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*元')
+            if value is not None:
+                return value
+        return None
+
+    def _format_decimal(value: Decimal) -> str:
+        quantized = value.quantize(Decimal('0.01')).normalize()
+        text = format(quantized, 'f')
+        if '.' in text:
+            text = text.rstrip('0').rstrip('.')
+        return text
+
+    def _format_price_text(value: Decimal) -> str:
+        return f'{value.quantize(Decimal("0.01"))} 元'
+
+    def _format_upside_text(latest_close: Decimal, target_price: Decimal) -> str | None:
+        if latest_close <= 0:
+            return None
+        upside = ((target_price - latest_close) / latest_close) * Decimal('100')
+        sign = '+' if upside >= 0 else ''
+        return f'{sign}{_format_decimal(upside.quantize(Decimal("0.1")))}%'
+
     insight_cards: list[tuple[str, str]] = []
     scenario_sections: list[tuple[str, list[str], list[str]]] = []
     observation_sections: list[tuple[str, str, list[str], list[str]]] = []
     analyst_takeaway: str | None = None
     risk_focus_items: list[str] = []
     quick_brief_cards: list[tuple[str, str]] = []
+    latest_close_price: Decimal | None = None
+    target_price: Decimal | None = None
     observation_tones = {
         '利多催化': 'bull',
         '中性觀察': 'neutral',
@@ -167,6 +212,8 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
         bullet_items = [item[2:] for item in items if item.startswith('- ')]
         if heading == '一句話投資主軸' and paragraph_items:
             insight_cards.append(('投資主軸', paragraph_items[0]))
+        elif heading == '重點摘要（條列）':
+            latest_close_price = _extract_latest_close_price(bullet_items)
         elif heading == '估值觀察':
             for item in paragraph_items:
                 if item.startswith('評價標籤：'):
@@ -174,6 +221,7 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
                 elif item.startswith('合理價區間：'):
                     insight_cards.append(('合理價區間', item))
         elif heading == '目標價推導' and paragraph_items:
+            target_price = _extract_target_price(paragraph_items)
             insight_cards.append(('目標價推導', paragraph_items[0]))
         elif heading in {'分析師觀點', '投資建議', '結論'} and analyst_takeaway is None:
             analyst_takeaway = next((item for item in [*paragraph_items, *bullet_items] if item.strip()), None)
@@ -190,6 +238,13 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
             first_observation = next((item for item in [*bullet_items, *paragraph_items] if item.strip()), None)
             if first_observation and heading in {'利多催化', '潛在風險'}:
                 quick_brief_cards.append((heading, first_observation))
+
+    if latest_close_price is not None:
+        insight_cards.append(('最新收盤價', _format_price_text(latest_close_price)))
+    if latest_close_price is not None and target_price is not None:
+        upside_text = _format_upside_text(latest_close_price, target_price)
+        if upside_text:
+            insight_cards.append(('目標價空間', upside_text))
 
     def _extract_financial_snapshot_cards(items: list[str]) -> list[tuple[str, str]]:
         cards: list[tuple[str, str]] = []
