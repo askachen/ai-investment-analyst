@@ -9,7 +9,7 @@ from ai_investment_analyst.analysis.stock_report import load_stock_report_contex
 from ai_investment_analyst.config import settings
 from ai_investment_analyst.db.connection import get_connection
 from ai_investment_analyst.etl.finmind_financial_loader import load_financial_statements
-from ai_investment_analyst.etl.finmind_loader import load_taiwan_stock_price
+from ai_investment_analyst.etl.finmind_loader import load_taiwan_stock_price, sync_taiwan_stock_universe
 from ai_investment_analyst.etl.finmind_monthly_revenue_loader import load_monthly_revenue
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1]
@@ -78,13 +78,17 @@ def run_daily_screener_job(
     revenue_schema_applier: Callable[[], None] = apply_revenue_schema,
     financial_schema_applier: Callable[[], None] = apply_financial_schema,
     screener_schema_applier: Callable[[], None] = apply_screener_schema,
+    universe_loader: Callable[[], list[str]] = sync_taiwan_stock_universe,
     price_loader: Callable[..., Any] = load_taiwan_stock_price,
     revenue_loader: Callable[..., Any] = load_monthly_revenue,
     financial_loader: Callable[..., Any] = load_financial_statements,
     screener_generator: Callable[..., list[DailyScreeningSnapshot]] = generate_all_daily_screenings,
 ) -> DailyScreenerJobResult:
     if tickers is None:
-        selected_tickers = [ticker.upper() for ticker in settings.screening_tickers]
+        if settings.screening_tickers_overridden:
+            selected_tickers = [ticker.upper() for ticker in settings.screening_tickers]
+        else:
+            selected_tickers = [ticker.upper() for ticker in universe_loader()]
     else:
         selected_tickers = [ticker.upper() for ticker in tickers]
     if not selected_tickers:

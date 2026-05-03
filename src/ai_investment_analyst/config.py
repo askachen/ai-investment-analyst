@@ -25,10 +25,11 @@ DEFAULT_SCREENING_TICKERS = (
     '3711',
     '6505',
 )
+SCREENING_TICKERS_RAW = os.getenv('SCREENING_TICKERS', '').strip()
 
 
 def _screening_tickers() -> tuple[str, ...]:
-    raw = os.getenv('SCREENING_TICKERS', '').strip()
+    raw = SCREENING_TICKERS_RAW
     if not raw:
         return DEFAULT_SCREENING_TICKERS
     return tuple(part.strip().upper() for part in raw.split(',') if part.strip())
@@ -41,6 +42,7 @@ class Settings:
     finlab_api_key: str = os.getenv("FINLAB_API_KEY", "")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     screening_tickers: tuple[str, ...] = _screening_tickers()
+    screening_tickers_overridden: bool = bool(SCREENING_TICKERS_RAW)
 
 
 settings = Settings()

@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from ai_investment_analyst.analysis.stock_report import load_stock_report_context
@@ -51,6 +53,66 @@ def test_run_daily_screener_job_bootstraps_source_data_before_strict_snapshots()
     assert result.source_refresh["revenue"] == {"dataset": "revenue"}
     assert result.source_refresh["financial"] == {"dataset": "financial"}
     assert result.snapshots == snapshots
+
+
+def test_run_daily_screener_job_uses_full_universe_loader_when_no_ticker_override(monkeypatch):
+    from ai_investment_analyst.analysis import daily_screener_job
+
+    monkeypatch.setattr(
+        daily_screener_job,
+        "settings",
+        SimpleNamespace(screening_tickers=("1101",), screening_tickers_overridden=False),
+    )
+    captured = {}
+
+    result = daily_screener_job.run_daily_screener_job(
+        tickers=None,
+        universe_loader=lambda: ["1101", "2330", "2454"],
+        base_schema_applier=lambda: None,
+        market_seed_applier=lambda: None,
+        price_schema_applier=lambda: None,
+        revenue_schema_applier=lambda: None,
+        financial_schema_applier=lambda: None,
+        screener_schema_applier=lambda: None,
+        price_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        revenue_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        financial_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        screener_generator=lambda **kwargs: captured.update(kwargs) or [],
+    )
+
+    assert result.tickers == ["1101", "2330", "2454"]
+    assert captured["ticker_loader"]() == ["1101", "2330", "2454"]
+
+
+
+def test_run_daily_screener_job_prefers_screening_ticker_override_over_full_universe(monkeypatch):
+    from ai_investment_analyst.analysis import daily_screener_job
+
+    monkeypatch.setattr(
+        daily_screener_job,
+        "settings",
+        SimpleNamespace(screening_tickers=("2330", "2454"), screening_tickers_overridden=True),
+    )
+    captured = {}
+
+    result = daily_screener_job.run_daily_screener_job(
+        tickers=None,
+        universe_loader=lambda: (_ for _ in ()).throw(AssertionError("universe loader should not run when override is set")),
+        base_schema_applier=lambda: None,
+        market_seed_applier=lambda: None,
+        price_schema_applier=lambda: None,
+        revenue_schema_applier=lambda: None,
+        financial_schema_applier=lambda: None,
+        screener_schema_applier=lambda: None,
+        price_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        revenue_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        financial_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        screener_generator=lambda **kwargs: captured.update(kwargs) or [],
+    )
+
+    assert result.tickers == ["2330", "2454"]
+    assert captured["ticker_loader"]() == ["2330", "2454"]
+
 
 
 def test_run_daily_screener_job_rejects_empty_ticker_input_instead_of_falling_back_to_defaults():

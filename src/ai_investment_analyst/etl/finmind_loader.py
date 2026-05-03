@@ -64,15 +64,87 @@ def finmind_headers() -> dict[str, str]:
 
 
 def fetch_finmind_stock_info(stock_id: str) -> dict[str, Any]:
-    response = requests.get(f"{FINMIND_BASE_URL}/data", headers=finmind_headers(), params={"dataset": "TaiwanStockInfo"}, timeout=30)
+    for item in fetch_all_taiwan_stock_info_rows():
+        if item.get("stock_id") == stock_id:
+            return item
+    return {"stock_id": stock_id, "stock_name": stock_id, "type": "stock"}
+
+
+def fetch_all_taiwan_stock_info_rows() -> list[dict[str, Any]]:
+    response = requests.get(
+        f"{FINMIND_BASE_URL}/data",
+        headers=finmind_headers(),
+        params={"dataset": "TaiwanStockInfo"},
+        timeout=30,
+    )
     response.raise_for_status()
     payload = response.json()
     if payload.get("status") != 200:
         raise ValueError(f"FinMind TaiwanStockInfo failed: {payload}")
-    for item in payload.get("data", []):
-        if item.get("stock_id") == stock_id:
-            return item
-    return {"stock_id": stock_id, "stock_name": stock_id, "type": "stock"}
+    return payload.get("data", [])
+
+
+def _is_taiwan_stock_row(row: dict[str, Any]) -> bool:
+    stock_id = str(row.get("stock_id") or "").strip()
+    if len(stock_id) != 4 or not stock_id.isdigit():
+        return False
+    row_type = str(row.get("type") or "").strip().lower()
+    return row_type in {"stock", "twse", "tpex", "esb", "上市", "上櫃"}
+
+
+def sync_taiwan_stock_universe(
+    fetch_stock_info_rows=fetch_all_taiwan_stock_info_rows,
+    ensure_data_source_fn=None,
+    get_market_id_fn=None,
+    create_ingestion_run_fn=None,
+    upsert_symbol_fn=None,
+    finalize_ingestion_run_fn=None,
+    connection_factory=get_connection,
+) -> list[str]:
+    ensure_data_source_fn = ensure_data_source_fn or ensure_data_source
+    get_market_id_fn = get_market_id_fn or get_market_id
+    create_ingestion_run_fn = create_ingestion_run_fn or create_ingestion_run
+    upsert_symbol_fn = upsert_symbol_fn or upsert_symbol
+    finalize_ingestion_run_fn = finalize_ingestion_run_fn or finalize_ingestion_run
+    stock_info_rows = [row for row in fetch_stock_info_rows() if _is_taiwan_stock_row(row)]
+    tickers = sorted({str(row["stock_id"]).strip().upper() for row in stock_info_rows})
+    with connection_factory() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            data_source_id = ensure_data_source_fn(cur)
+            market_id = get_market_id_fn(cur, "TW")
+            ingestion_run_id = create_ingestion_run_fn(cur, data_source_id, market_id, tickers, "universe-sync")
+            conn.commit()
+        try:
+            with conn.cursor() as cur:
+                for row in stock_info_rows:
+                    stock_id = str(row["stock_id"]).strip().upper()
+                    spec = StockSpec(stock_id=stock_id)
+                    upsert_symbol_fn(cur, market_id, spec, row)
+                finalize_ingestion_run_fn(
+                    cur,
+                    ingestion_run_id,
+                    status="success",
+                    records_received=len(tickers),
+                    records_inserted=len(tickers),
+                    records_updated=0,
+                    records_failed=0,
+                )
+                conn.commit()
+        except Exception as exc:
+            with conn.cursor() as cur:
+                finalize_ingestion_run_fn(
+                    cur,
+                    ingestion_run_id,
+                    status="failed",
+                    records_received=len(tickers),
+                    records_inserted=0,
+                    records_updated=0,
+                    records_failed=1,
+                    error_message=str(exc),
+                )
+                conn.commit()
+            raise
+    return tickers
 
 
 def fetch_finmind_stock_price(stock_id: str, start_date: str) -> list[dict[str, Any]]:
