@@ -1,8 +1,13 @@
 from pathlib import Path
+import sys
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = BASE_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from ai_investment_analyst.db.connection import get_connection
 
-BASE_DIR = Path(__file__).resolve().parents[1]
 SQL_PATH = BASE_DIR / "openspec" / "changes" / "stock-analysis-report" / "sql" / "006_daily_screener.sql"
 
 if __name__ == "__main__":
