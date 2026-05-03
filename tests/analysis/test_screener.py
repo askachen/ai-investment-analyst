@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import ai_investment_analyst.analysis.screener as screener_module
 from ai_investment_analyst.analysis.screener import (
     ScreeningCandidate,
     ScreeningCriteria,
@@ -215,6 +216,35 @@ def test_load_screener_candidates_derives_metrics_from_contexts():
     assert candidates[0].price_10d_change_pct == Decimal("13.33")
     assert candidates[0].pb_ratio == Decimal("4.8")
     assert candidates[1].revenue_mom_pct == Decimal("-1.2")
+
+
+def test_latest_average_volume_5d_from_db_returns_none_when_no_volume_rows(monkeypatch):
+    class FakeCursor:
+        def execute(self, *_args, **_kwargs):
+            return None
+
+        def fetchone(self):
+            return (None,)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeConnection:
+        def cursor(self):
+            return FakeCursor()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(screener_module, 'get_connection', lambda: FakeConnection())
+
+    assert screener_module._latest_average_volume_5d_from_db('2330') is None
 
 
 def test_render_screening_results_formats_ranked_candidates_with_reasons():

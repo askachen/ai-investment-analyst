@@ -224,11 +224,11 @@ def _passes(candidate: ScreeningCandidate, criteria: ScreeningCriteria) -> bool:
     )
 
 
-def _latest_average_volume_5d_from_db(ticker: str) -> int:
+def _latest_average_volume_5d_from_db(ticker: str) -> int | None:
     with get_connection() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT COALESCE(ROUND(AVG(volume)), 0)
+            SELECT ROUND(AVG(volume))
             FROM (
                 SELECT pdc.volume
                 FROM price_daily_canonical pdc
@@ -241,7 +241,9 @@ def _latest_average_volume_5d_from_db(ticker: str) -> int:
             (ticker,),
         )
         row = cur.fetchone()
-    return int(row[0] or 0)
+    if not row or row[0] is None:
+        return None
+    return int(row[0])
 
 
 def load_screener_candidates(
