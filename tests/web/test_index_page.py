@@ -68,6 +68,9 @@ def test_index_page_contains_form():
     assert '股票池' in response.text
     assert '候選名單' in response.text
     assert '排行檢視' in response.text
+    assert '資料新鮮度' in response.text
+    assert 'freshness-status' in response.text
+    assert 'payload.freshness_message' in response.text
     assert 'payload.results.length' in response.text
     assert 'payload.universe_size ?? payload.results.length ??' in response.text
     assert '成長動能' in response.text

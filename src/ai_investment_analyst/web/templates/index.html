@@ -254,6 +254,19 @@
         line-height: 1.5;
       }
 
+      .freshness-status {
+        border-color: rgba(52, 211, 153, 0.24);
+      }
+
+      .freshness-status.is-stale {
+        border-color: rgba(251, 191, 36, 0.32);
+        background: rgba(251, 191, 36, 0.08);
+      }
+
+      .freshness-status.is-unknown {
+        border-color: rgba(148, 163, 184, 0.18);
+      }
+
       .screener-scroll {
         overflow-x: auto;
       }
@@ -1501,11 +1514,23 @@
         const candidateCount = payload.candidate_count ?? payload.results.length ?? 'N/A';
         const universeSize = payload.universe_size ?? payload.results.length ?? 'N/A';
         const visibleCount = payload.results.length;
+        const freshnessStatus = payload.freshness_status || 'unknown';
+        const freshnessLabel = {
+          fresh: '正常',
+          stale: '需檢查',
+          unknown: '等待中',
+        }[freshnessStatus] || freshnessStatus;
         const cards = [
           {
             label: '更新日',
             value: payload.run_date || 'N/A',
             note: payload.generated_at || '等待最新批次',
+          },
+          {
+            label: '資料新鮮度',
+            value: freshnessLabel,
+            note: payload.freshness_message || '等待最新批次。',
+            extraClass: `freshness-status is-${freshnessStatus}`,
           },
           {
             label: '股票池',
@@ -1526,7 +1551,7 @@
         return `
           <div class="snapshot-strip">
             ${cards.map((card) => `
-              <article class="snapshot-card">
+              <article class="snapshot-card ${escapeHtml(card.extraClass || '')}">
                 <span class="snapshot-label">${escapeHtml(card.label)}</span>
                 <strong class="snapshot-value">${escapeHtml(card.value)}</strong>
                 <span class="snapshot-note">${escapeHtml(card.note)}</span>

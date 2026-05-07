@@ -58,6 +58,66 @@ def test_latest_screener_api_returns_snapshot(monkeypatch):
     assert len(payload['strategies']) >= 3
 
 
+def test_latest_screener_api_marks_stale_snapshot(monkeypatch):
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr('ai_investment_analyst.web.app.resolve_screener_display_name', lambda ticker: None)
+    monkeypatch.setattr('ai_investment_analyst.web.app._utc_now', lambda: datetime(2026, 5, 7, 2, 0, tzinfo=timezone.utc))
+    monkeypatch.setattr(
+        'ai_investment_analyst.web.app.load_latest_screener_snapshot',
+        lambda strategy='balanced': {
+            'run_date': '2026-05-04',
+            'generated_at': '2026-05-04T01:10:00+00:00',
+            'results': [
+                {
+                    'rank': 1,
+                    'ticker': '2330',
+                    'total_score': '82.50',
+                    'reasons': ['月營收年增 22.30%'],
+                },
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get('/api/screener/latest')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['freshness_status'] == 'stale'
+    assert payload['freshness_message'] == '資料已 3 天未更新，請檢查每日批次。'
+
+
+def test_latest_screener_api_marks_fresh_snapshot(monkeypatch):
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr('ai_investment_analyst.web.app.resolve_screener_display_name', lambda ticker: None)
+    monkeypatch.setattr('ai_investment_analyst.web.app._utc_now', lambda: datetime(2026, 5, 7, 2, 0, tzinfo=timezone.utc))
+    monkeypatch.setattr(
+        'ai_investment_analyst.web.app.load_latest_screener_snapshot',
+        lambda strategy='balanced': {
+            'run_date': '2026-05-07',
+            'generated_at': '2026-05-07T01:10:00+00:00',
+            'results': [
+                {
+                    'rank': 1,
+                    'ticker': '2330',
+                    'total_score': '82.50',
+                    'reasons': ['月營收年增 22.30%'],
+                },
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get('/api/screener/latest')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['freshness_status'] == 'fresh'
+    assert payload['freshness_message'] == '資料今日已更新。'
+
+
 def test_resolve_screener_display_name_falls_back_to_db_local_name(monkeypatch):
     monkeypatch.setattr('ai_investment_analyst.web.app.lookup_taiwan_stock_name', lambda ticker: None)
     monkeypatch.setattr('ai_investment_analyst.web.app.load_symbol_display_name_from_db', lambda ticker: '玉晶光' if ticker == '3406' else None)
@@ -96,6 +156,8 @@ def test_latest_screener_api_returns_empty_payload_when_missing(monkeypatch):
         'generated_at': None,
         'universe_size': None,
         'candidate_count': None,
+        'freshness_status': 'unknown',
+        'freshness_message': '等待最新批次。',
         'strategy': {
             'key': 'balanced',
             'label': '平衡多因子',

@@ -6,7 +6,7 @@ import os
 import re
 from secrets import compare_digest
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -82,6 +82,8 @@ class ScreenerSnapshotResponse(BaseModel):
     generated_at: str | None = None
     universe_size: int | None = None
     candidate_count: int | None = None
+    freshness_status: str = 'unknown'
+    freshness_message: str = '等待最新批次。'
     strategy: ScreenerStrategyResponse | None = None
     strategies: list[ScreenerStrategyResponse] = Field(default_factory=list)
     results: list[ScreenerResultResponse] = Field(default_factory=list)
@@ -496,16 +498,60 @@ def resolve_screener_display_name(ticker: str) -> str | None:
     return resolve_stock_name(ticker)
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_snapshot_date(snapshot: dict) -> date | None:
+    generated_at = snapshot.get('generated_at')
+    if generated_at:
+        try:
+            parsed = datetime.fromisoformat(str(generated_at).replace('Z', '+00:00'))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc).date()
+        except Exception:
+            pass
+    run_date = snapshot.get('run_date')
+    if run_date:
+        try:
+            return date.fromisoformat(str(run_date)[:10])
+        except Exception:
+            pass
+    return None
+
+
+def describe_screener_snapshot_freshness(snapshot: dict) -> tuple[str, str]:
+    snapshot_date = _parse_snapshot_date(snapshot)
+    if snapshot_date is None:
+        return 'unknown', '等待最新批次。'
+    age_days = max((_utc_now().date() - snapshot_date).days, 0)
+    if age_days == 0:
+        return 'fresh', '資料今日已更新。'
+    if age_days == 1:
+        return 'fresh', '資料為昨日批次。'
+    return 'stale', f'資料已 {age_days} 天未更新，請檢查每日批次。'
+
+
+def _with_freshness_metadata(snapshot: dict) -> dict:
+    status, message = describe_screener_snapshot_freshness(snapshot)
+    return {
+        **snapshot,
+        'freshness_status': snapshot.get('freshness_status') or status,
+        'freshness_message': snapshot.get('freshness_message') or message,
+    }
+
+
 def enrich_screener_snapshot(snapshot: dict) -> dict:
     enriched_results = []
     for result in snapshot.get('results', []):
         item = dict(result)
         item['display_name'] = resolve_screener_display_name(item['ticker'])
         enriched_results.append(item)
-    return {
+    return _with_freshness_metadata({
         **snapshot,
         'results': enriched_results,
-    }
+    })
 
 
 def _decimal_factor_scores(result: dict) -> dict[str, Decimal]:
