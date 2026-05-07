@@ -84,11 +84,13 @@ def run_daily_screener_job(
     financial_loader: Callable[..., Any] = load_financial_statements,
     screener_generator: Callable[..., list[DailyScreeningSnapshot]] = generate_all_daily_screenings,
 ) -> DailyScreenerJobResult:
+    full_universe_refresh = False
     if tickers is None:
         if settings.screening_tickers_overridden:
             selected_tickers = [ticker.upper() for ticker in settings.screening_tickers]
         else:
             selected_tickers = [ticker.upper() for ticker in universe_loader()]
+            full_universe_refresh = True
     else:
         selected_tickers = [ticker.upper() for ticker in tickers]
     if not selected_tickers:
@@ -103,9 +105,14 @@ def run_daily_screener_job(
 
     source_refresh = {
         "price": price_loader(stock_ids=tuple(selected_tickers)),
-        "revenue": revenue_loader(stock_ids=tuple(selected_tickers)),
-        "financial": financial_loader(stock_ids=tuple(selected_tickers)),
     }
+    if full_universe_refresh:
+        skipped_summary = {"skipped": True, "reason": "full_universe_daily_refresh_uses_existing_fundamentals"}
+        source_refresh["revenue"] = skipped_summary
+        source_refresh["financial"] = skipped_summary
+    else:
+        source_refresh["revenue"] = revenue_loader(stock_ids=tuple(selected_tickers))
+        source_refresh["financial"] = financial_loader(stock_ids=tuple(selected_tickers))
     snapshots = screener_generator(
         ticker_loader=lambda: list(selected_tickers),
         context_loader=load_stock_report_context,

@@ -91,6 +91,36 @@ def test_run_daily_screener_job_uses_full_universe_loader_when_no_ticker_overrid
     assert captured["ticker_loader"]() == ["1101", "2330", "2454"]
 
 
+def test_run_daily_screener_job_skips_full_universe_fundamental_refresh_by_default(monkeypatch):
+    from ai_investment_analyst.analysis import daily_screener_job
+
+    monkeypatch.setattr(
+        daily_screener_job,
+        "settings",
+        SimpleNamespace(screening_tickers=("1101",), screening_tickers_overridden=False),
+    )
+    calls = []
+
+    result = daily_screener_job.run_daily_screener_job(
+        tickers=None,
+        universe_loader=lambda: ["1101", "2330", "2454"],
+        base_schema_applier=lambda: None,
+        market_seed_applier=lambda: None,
+        price_schema_applier=lambda: None,
+        revenue_schema_applier=lambda: None,
+        financial_schema_applier=lambda: None,
+        screener_schema_applier=lambda: None,
+        price_loader=lambda stock_ids: calls.append(("price", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
+        revenue_loader=lambda stock_ids: calls.append(("revenue", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
+        financial_loader=lambda stock_ids: calls.append(("financial", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
+        screener_generator=lambda **kwargs: [],
+    )
+
+    assert calls == [("price", ("1101", "2330", "2454"))]
+    assert result.source_refresh["revenue"] == {"skipped": True, "reason": "full_universe_daily_refresh_uses_existing_fundamentals"}
+    assert result.source_refresh["financial"] == {"skipped": True, "reason": "full_universe_daily_refresh_uses_existing_fundamentals"}
+
+
 
 def test_run_daily_screener_job_prefers_screening_ticker_override_over_full_universe(monkeypatch):
     from ai_investment_analyst.analysis import daily_screener_job
