@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 PRICE_SOURCE_PRIORITY: dict[tuple[str, str], list[str]] = {
-    ("TW", "stock"): ["finmind", "yfinance", "finlab"],
+    ("TW", "stock"): ["twse", "tpex", "finmind", "yfinance", "finlab"],
     ("US", "stock"): ["yfinance", "finmind", "finlab"],
     ("US", "index"): ["yfinance", "finmind", "finlab"],
     ("TW", "index"): ["finmind", "yfinance", "finlab"],

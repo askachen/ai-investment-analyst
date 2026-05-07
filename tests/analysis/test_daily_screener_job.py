@@ -5,6 +5,13 @@ import pytest
 from ai_investment_analyst.analysis.stock_report import load_stock_report_context
 
 
+def test_run_daily_screener_job_uses_official_universe_and_price_loader_defaults():
+    from ai_investment_analyst.analysis import daily_screener_job
+
+    assert daily_screener_job.run_daily_screener_job.__kwdefaults__["universe_loader"] is daily_screener_job.sync_official_taiwan_stock_universe
+    assert daily_screener_job.run_daily_screener_job.__kwdefaults__["price_loader"] is daily_screener_job.load_twse_tpex_stock_price
+
+
 def test_run_daily_screener_job_bootstraps_source_data_before_strict_snapshots():
     from ai_investment_analyst.analysis.daily_screener_job import run_daily_screener_job
 
