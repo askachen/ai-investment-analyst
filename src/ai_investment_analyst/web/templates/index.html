@@ -1023,22 +1023,22 @@
         }
 
         .strategy-tabs {
-          gap: 6px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 7px;
           padding: 10px 10px 0;
-          flex-wrap: nowrap;
-          overflow-x: auto;
-          scrollbar-width: none;
-        }
-
-        .strategy-tabs::-webkit-scrollbar {
-          display: none;
+          overflow: visible;
         }
 
         .strategy-chip {
-          flex: 0 0 auto;
-          padding: 7px 10px;
-          font-size: 11px;
+          width: 100%;
+          min-height: 42px;
+          padding: 8px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          line-height: 1.15;
           box-shadow: none;
+          text-align: center;
         }
 
         .strategy-chip small {
