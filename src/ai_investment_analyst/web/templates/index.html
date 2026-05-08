@@ -1056,46 +1056,39 @@
         }
 
         .snapshot-strip {
-          display: flex;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 7px;
           padding: 10px 10px 2px;
-          overflow-x: auto;
-          scroll-snap-type: x mandatory;
-          scrollbar-width: none;
-        }
-
-        .snapshot-strip::-webkit-scrollbar {
-          display: none;
+          overflow: visible;
         }
 
         .snapshot-card {
-          flex: 0 0 118px;
-          scroll-snap-align: start;
-          min-height: 58px;
+          min-height: 62px;
           grid-template-columns: 1fr;
           grid-template-areas:
             "label"
             "value";
           gap: 3px;
-          padding: 9px 10px 9px 12px;
-          border-radius: 999px;
+          padding: 9px 10px 9px 13px;
+          border-radius: 14px;
         }
 
         .snapshot-card::before {
-          width: 2px;
-          inset: 10px auto 10px 6px;
+          width: 3px;
+          inset: 9px auto 9px 6px;
           border-radius: 999px;
         }
 
         .snapshot-label {
-          padding-left: 4px;
+          padding-left: 5px;
           font-size: 9px;
           letter-spacing: 0.07em;
         }
 
         .snapshot-value {
-          padding-left: 4px;
-          font-size: 18px;
+          padding-left: 5px;
+          font-size: 19px;
           text-align: left;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1105,12 +1098,13 @@
           display: none;
         }
 
-        .snapshot-card.is-date {
-          flex-basis: 152px;
+        .snapshot-card.is-date,
+        .snapshot-card.is-freshness {
+          min-height: 70px;
         }
 
         .snapshot-card.is-date .snapshot-value {
-          font-size: 16px;
+          font-size: 17px;
         }
 
         .dashboard-subtitle,
@@ -1680,7 +1674,7 @@
             label: '資料新鮮度',
             value: freshnessLabel,
             note: payload.freshness_message || '等待最新批次。',
-            extraClass: `freshness-status is-${freshnessStatus}`,
+            extraClass: `freshness-status is-${freshnessStatus} is-freshness`,
           },
           {
             label: '股票池',
