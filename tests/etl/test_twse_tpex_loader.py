@@ -1,8 +1,30 @@
 from datetime import date
 from decimal import Decimal
+import ssl
 from types import SimpleNamespace
 
 from ai_investment_analyst.etl import twse_tpex_loader
+
+
+def test_official_data_tls_adapter_disables_only_openssl_strict_flag(monkeypatch):
+    class FakeContext:
+        verify_flags = ssl.VERIFY_X509_STRICT | ssl.VERIFY_X509_PARTIAL_CHAIN
+
+    fake_context = FakeContext()
+    captured = {}
+
+    def fake_pool_manager(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(twse_tpex_loader.ssl, "create_default_context", lambda: fake_context)
+    monkeypatch.setattr(twse_tpex_loader, "PoolManager", fake_pool_manager)
+
+    twse_tpex_loader._OfficialDataTLSAdapter()
+
+    assert fake_context.verify_flags & ssl.VERIFY_X509_STRICT == 0
+    assert fake_context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
+    assert captured["ssl_context"] is fake_context
 
 
 def test_parse_twse_daily_price_rows_filters_to_requested_stock_ids():

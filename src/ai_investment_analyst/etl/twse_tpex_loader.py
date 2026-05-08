@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from functools import lru_cache
 from typing import Any, Iterable
 
 import requests
 from psycopg.rows import dict_row
+from requests.adapters import HTTPAdapter
+from urllib3.poolmanager import PoolManager
 
 from ai_investment_analyst.db.connection import get_connection
 from ai_investment_analyst.db.price_store import refresh_price_daily_canonical, upsert_price_daily_raw
@@ -18,6 +22,42 @@ TPEX_BASE_URL = "https://www.tpex.org.tw"
 TWSE_LISTED_COMPANIES_URL = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
 TPEX_LISTED_COMPANIES_URL = "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O"
 DEFAULT_START_DATE = "2026-04-01"
+
+
+class _OfficialDataTLSAdapter(HTTPAdapter):
+    """HTTPS adapter for Taiwan official data endpoints.
+
+    Python 3.13/OpenSSL can reject the TWSE OpenAPI certificate chain with
+    ``Missing Subject Key Identifier`` when strict X.509 verification is on.
+    Keep normal CA/hostname verification enabled, but disable only the extra
+    OpenSSL strict flag for these official public-data hosts.
+    """
+
+    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):  # type: ignore[override]
+        context = ssl.create_default_context()
+        if hasattr(ssl, "VERIFY_X509_STRICT"):
+            context.verify_flags &= ~ssl.VERIFY_X509_STRICT
+        self.poolmanager = PoolManager(
+            num_pools=connections,
+            maxsize=maxsize,
+            block=block,
+            ssl_context=context,
+            **pool_kwargs,
+        )
+
+
+@lru_cache(maxsize=1)
+def _official_requests_session() -> requests.Session:
+    session = requests.Session()
+    adapter = _OfficialDataTLSAdapter()
+    session.mount("https://openapi.twse.com.tw", adapter)
+    session.mount(TWSE_BASE_URL, adapter)
+    session.mount(TPEX_BASE_URL, adapter)
+    return session
+
+
+def _official_get(url: str, **kwargs) -> requests.Response:
+    return _official_requests_session().get(url, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -77,13 +117,13 @@ def _signed_decimal(value: Any) -> Decimal | None:
 
 
 def fetch_twse_listed_company_rows() -> list[dict[str, Any]]:
-    response = requests.get(TWSE_LISTED_COMPANIES_URL, timeout=30)
+    response = _official_get(TWSE_LISTED_COMPANIES_URL, timeout=30)
     response.raise_for_status()
     return response.json()
 
 
 def fetch_tpex_listed_company_rows() -> list[dict[str, Any]]:
-    response = requests.get(TPEX_LISTED_COMPANIES_URL, timeout=30)
+    response = _official_get(TPEX_LISTED_COMPANIES_URL, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -321,7 +361,7 @@ def _tpex_roc_date(value: date) -> str:
 
 
 def fetch_twse_daily_price_rows(trading_date: date, stock_ids: set[str]) -> list[dict[str, Any]]:
-    response = requests.get(
+    response = _official_get(
         f"{TWSE_BASE_URL}/exchangeReport/MI_INDEX",
         params={"response": "json", "date": _twse_date(trading_date), "type": "ALLBUT0999"},
         timeout=30,
@@ -332,7 +372,7 @@ def fetch_twse_daily_price_rows(trading_date: date, stock_ids: set[str]) -> list
 
 
 def fetch_tpex_daily_price_rows(trading_date: date, stock_ids: set[str]) -> list[dict[str, Any]]:
-    response = requests.get(
+    response = _official_get(
         f"{TPEX_BASE_URL}/www/zh-tw/afterTrading/dailyQuotes",
         params={"date": _tpex_roc_date(trading_date), "type": "EW", "response": "json"},
         timeout=30,
