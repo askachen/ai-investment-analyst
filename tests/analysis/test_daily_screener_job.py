@@ -30,7 +30,7 @@ def test_run_daily_screener_job_bootstraps_source_data_before_strict_snapshots()
         revenue_schema_applier=lambda: mark("revenue_schema"),
         financial_schema_applier=lambda: mark("financial_schema"),
         screener_schema_applier=lambda: mark("screener_schema"),
-        price_loader=lambda stock_ids: mark("price_loader", tuple(stock_ids)) or {"dataset": "price"},
+        price_loader=lambda stock_ids, start_date=None: mark("price_loader", (tuple(stock_ids), start_date)) or {"dataset": "price"},
         revenue_loader=lambda stock_ids: mark("revenue_loader", tuple(stock_ids)) or {"dataset": "revenue"},
         financial_loader=lambda stock_ids: mark("financial_loader", tuple(stock_ids)) or {"dataset": "financial"},
         screener_generator=lambda **kwargs: captured.update(kwargs) or mark("screener_generator", tuple(kwargs["ticker_loader"]())) or snapshots,
@@ -48,7 +48,8 @@ def test_run_daily_screener_job_bootstraps_source_data_before_strict_snapshots()
         "financial_loader",
         "screener_generator",
     ]
-    assert calls[6][1] == ("2330", "2454", "2881")
+    assert calls[6][1][0] == ("2330", "2454", "2881")
+    assert calls[6][1][1] is not None
     assert calls[7][1] == ("2330", "2454", "2881")
     assert calls[8][1] == ("2330", "2454", "2881")
     assert captured["ticker_loader"]() == ["2330", "2454", "2881"]
@@ -81,7 +82,7 @@ def test_run_daily_screener_job_uses_full_universe_loader_when_no_ticker_overrid
         revenue_schema_applier=lambda: None,
         financial_schema_applier=lambda: None,
         screener_schema_applier=lambda: None,
-        price_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        price_loader=lambda stock_ids, start_date=None: {"stock_ids": tuple(stock_ids), "start_date": start_date},
         revenue_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
         financial_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
         screener_generator=lambda **kwargs: captured.update(kwargs) or [],
@@ -91,7 +92,7 @@ def test_run_daily_screener_job_uses_full_universe_loader_when_no_ticker_overrid
     assert captured["ticker_loader"]() == ["1101", "2330", "2454"]
 
 
-def test_run_daily_screener_job_skips_full_universe_fundamental_refresh_by_default(monkeypatch):
+def test_run_daily_screener_job_refreshes_missing_full_universe_fundamentals(monkeypatch):
     from ai_investment_analyst.analysis import daily_screener_job
 
     monkeypatch.setattr(
@@ -100,6 +101,8 @@ def test_run_daily_screener_job_skips_full_universe_fundamental_refresh_by_defau
         SimpleNamespace(screening_tickers=("1101",), screening_tickers_overridden=False),
     )
     calls = []
+    monkeypatch.setattr(daily_screener_job, "_select_revenue_refresh_tickers", lambda tickers: ["1101", "2330"])
+    monkeypatch.setattr(daily_screener_job, "_select_financial_refresh_tickers", lambda tickers: ["2454"])
 
     result = daily_screener_job.run_daily_screener_job(
         tickers=None,
@@ -110,15 +113,18 @@ def test_run_daily_screener_job_skips_full_universe_fundamental_refresh_by_defau
         revenue_schema_applier=lambda: None,
         financial_schema_applier=lambda: None,
         screener_schema_applier=lambda: None,
-        price_loader=lambda stock_ids: calls.append(("price", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
+        price_loader=lambda stock_ids, start_date=None: calls.append(("price", tuple(stock_ids), start_date)) or {"stock_ids": tuple(stock_ids)},
         revenue_loader=lambda stock_ids: calls.append(("revenue", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
         financial_loader=lambda stock_ids: calls.append(("financial", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
         screener_generator=lambda **kwargs: [],
     )
 
-    assert calls == [("price", ("1101", "2330", "2454"))]
-    assert result.source_refresh["revenue"] == {"skipped": True, "reason": "full_universe_daily_refresh_uses_existing_fundamentals"}
-    assert result.source_refresh["financial"] == {"skipped": True, "reason": "full_universe_daily_refresh_uses_existing_fundamentals"}
+    assert calls[0][0] == "price"
+    assert calls[0][1] == ("1101", "2330", "2454")
+    assert calls[0][2] is not None
+    assert calls[1:] == [("revenue", ("1101", "2330")), ("financial", ("2454",))]
+    assert result.source_refresh["revenue"] == {"stock_ids": ("1101", "2330")}
+    assert result.source_refresh["financial"] == {"stock_ids": ("2454",)}
 
 
 
@@ -141,7 +147,7 @@ def test_run_daily_screener_job_prefers_screening_ticker_override_over_full_univ
         revenue_schema_applier=lambda: None,
         financial_schema_applier=lambda: None,
         screener_schema_applier=lambda: None,
-        price_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
+        price_loader=lambda stock_ids, start_date=None: {"stock_ids": tuple(stock_ids), "start_date": start_date},
         revenue_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
         financial_loader=lambda stock_ids: {"stock_ids": tuple(stock_ids)},
         screener_generator=lambda **kwargs: captured.update(kwargs) or [],
@@ -164,7 +170,7 @@ def test_run_daily_screener_job_rejects_empty_ticker_input_instead_of_falling_ba
             revenue_schema_applier=lambda: None,
             financial_schema_applier=lambda: None,
             screener_schema_applier=lambda: None,
-            price_loader=lambda stock_ids: {"dataset": "price"},
+            price_loader=lambda stock_ids, start_date=None: {"dataset": "price"},
             revenue_loader=lambda stock_ids: {"dataset": "revenue"},
             financial_loader=lambda stock_ids: {"dataset": "financial"},
             screener_generator=lambda **kwargs: [],
@@ -212,7 +218,7 @@ def test_run_daily_screener_job_fails_closed_before_snapshot_generation_when_sou
             revenue_schema_applier=lambda: calls.append("revenue_schema"),
             financial_schema_applier=lambda: calls.append("financial_schema"),
             screener_schema_applier=lambda: calls.append("screener_schema"),
-            price_loader=lambda stock_ids: calls.append("price_loader") or {"dataset": "price"},
+            price_loader=lambda stock_ids, start_date=None: calls.append("price_loader") or {"dataset": "price"},
             revenue_loader=lambda stock_ids: (_ for _ in ()).throw(RuntimeError("FinMind monthly revenue unavailable")),
             financial_loader=lambda stock_ids: calls.append("financial_loader") or {"dataset": "financial"},
             screener_generator=lambda **kwargs: calls.append("screener_generator") or [],

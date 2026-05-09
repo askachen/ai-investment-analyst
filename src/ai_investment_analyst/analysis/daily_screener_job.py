@@ -22,6 +22,8 @@ REQUIRED_SCHEMA_TABLES = (
     'screening_runs',
     'screening_results',
 )
+FULL_UNIVERSE_REVENUE_REFRESH_LIMIT = 120
+FULL_UNIVERSE_FINANCIAL_REFRESH_LIMIT = 40
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1]
 SQL_DIR = PACKAGE_DIR / "sql"
@@ -131,6 +133,86 @@ def _price_refresh_start_date(tickers: Sequence[str], fallback_start_date: str =
     return max((latest_date - timedelta(days=14)).isoformat(), fallback_start_date)
 
 
+def _select_revenue_refresh_tickers(tickers: Sequence[str], limit: int = FULL_UNIVERSE_REVENUE_REFRESH_LIMIT) -> list[str]:
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            '''
+            with latest_price as (
+                select distinct on (s.ticker)
+                    s.ticker,
+                    pdc.volume,
+                    pdc.trading_date
+                from symbols s
+                join price_daily_canonical pdc on pdc.symbol_id = s.id
+                where s.ticker = any(%s)
+                order by s.ticker, pdc.trading_date desc
+            ), latest_revenue as (
+                select distinct on (s.ticker)
+                    s.ticker,
+                    mr.revenue_period
+                from symbols s
+                join monthly_revenues mr on mr.symbol_id = s.id
+                where s.ticker = any(%s)
+                order by s.ticker, mr.revenue_period desc
+            )
+            select lp.ticker
+            from latest_price lp
+            left join latest_revenue lr on lr.ticker = lp.ticker
+            where lr.revenue_period is null
+               or lr.revenue_period < date_trunc('month', current_date) - interval '93 days'
+            order by coalesce(lp.volume, 0) desc, lp.ticker
+            limit %s
+            ''',
+            (list(tickers), list(tickers), limit),
+        )
+        return [row[0] for row in cur.fetchall()]
+
+
+def _select_financial_refresh_tickers(tickers: Sequence[str], limit: int = FULL_UNIVERSE_FINANCIAL_REFRESH_LIMIT) -> list[str]:
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            '''
+            with latest_price as (
+                select distinct on (s.ticker)
+                    s.ticker,
+                    pdc.volume,
+                    pdc.trading_date
+                from symbols s
+                join price_daily_canonical pdc on pdc.symbol_id = s.id
+                where s.ticker = any(%s)
+                order by s.ticker, pdc.trading_date desc
+            ), latest_revenue as (
+                select distinct on (s.ticker)
+                    s.ticker,
+                    mr.revenue_period
+                from symbols s
+                join monthly_revenues mr on mr.symbol_id = s.id
+                where s.ticker = any(%s)
+                order by s.ticker, mr.revenue_period desc
+            ), latest_eps as (
+                select distinct on (s.ticker)
+                    s.ticker,
+                    fsi.report_date
+                from symbols s
+                join financial_statement_items fsi on fsi.symbol_id = s.id
+                where s.ticker = any(%s)
+                  and (fsi.item_name ilike '%%eps%%' or fsi.item_name like '%%每股盈餘%%')
+                order by s.ticker, fsi.report_date desc
+            )
+            select lp.ticker
+            from latest_price lp
+            join latest_revenue lr on lr.ticker = lp.ticker
+            left join latest_eps le on le.ticker = lp.ticker
+            where le.report_date is null
+               or le.report_date < current_date - interval '220 days'
+            order by coalesce(lp.volume, 0) desc, lp.ticker
+            limit %s
+            ''',
+            (list(tickers), list(tickers), list(tickers), limit),
+        )
+        return [row[0] for row in cur.fetchall()]
+
+
 def run_daily_screener_job(
     tickers: Sequence[str] | None = None,
     *,
@@ -172,9 +254,18 @@ def run_daily_screener_job(
         "price": price_loader(stock_ids=tuple(selected_tickers), start_date=price_start_date),
     }
     if full_universe_refresh:
-        skipped_summary = {"skipped": True, "reason": "full_universe_daily_refresh_uses_existing_fundamentals"}
-        source_refresh["revenue"] = skipped_summary
-        source_refresh["financial"] = skipped_summary
+        revenue_refresh_tickers = _select_revenue_refresh_tickers(selected_tickers)
+        financial_refresh_tickers = _select_financial_refresh_tickers(selected_tickers)
+        source_refresh["revenue"] = (
+            revenue_loader(stock_ids=tuple(revenue_refresh_tickers))
+            if revenue_refresh_tickers
+            else {"skipped": True, "reason": "full_universe_revenue_is_fresh"}
+        )
+        source_refresh["financial"] = (
+            financial_loader(stock_ids=tuple(financial_refresh_tickers))
+            if financial_refresh_tickers
+            else {"skipped": True, "reason": "full_universe_financials_are_fresh"}
+        )
     else:
         source_refresh["revenue"] = revenue_loader(stock_ids=tuple(selected_tickers))
         source_refresh["financial"] = financial_loader(stock_ids=tuple(selected_tickers))
