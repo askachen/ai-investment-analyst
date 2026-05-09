@@ -92,6 +92,42 @@ def test_run_daily_screener_job_uses_full_universe_loader_when_no_ticker_overrid
     assert captured["ticker_loader"]() == ["1101", "2330", "2454"]
 
 
+def test_run_daily_screener_job_skips_full_universe_fundamentals_when_fresh(monkeypatch):
+    from ai_investment_analyst.analysis import daily_screener_job
+
+    monkeypatch.setattr(
+        daily_screener_job,
+        "settings",
+        SimpleNamespace(screening_tickers=("1101",), screening_tickers_overridden=False),
+    )
+    calls = []
+    monkeypatch.setattr(daily_screener_job, "_select_revenue_refresh_tickers", lambda tickers: [])
+    monkeypatch.setattr(daily_screener_job, "_select_financial_refresh_tickers", lambda tickers: [])
+
+    result = daily_screener_job.run_daily_screener_job(
+        tickers=None,
+        universe_loader=lambda: ["1101", "2330", "2454"],
+        base_schema_applier=lambda: None,
+        market_seed_applier=lambda: None,
+        price_schema_applier=lambda: None,
+        revenue_schema_applier=lambda: None,
+        financial_schema_applier=lambda: None,
+        screener_schema_applier=lambda: None,
+        price_loader=lambda stock_ids, start_date=None: calls.append(("price", tuple(stock_ids), start_date)) or {"stock_ids": tuple(stock_ids)},
+        revenue_loader=lambda stock_ids: calls.append(("revenue", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
+        financial_loader=lambda stock_ids: calls.append(("financial", tuple(stock_ids))) or {"stock_ids": tuple(stock_ids)},
+        screener_generator=lambda **kwargs: [],
+    )
+
+    assert calls[0][0] == "price"
+    assert calls[0][1] == ("1101", "2330", "2454")
+    assert calls[0][2] is not None
+    assert calls[1:] == []
+    assert result.source_refresh["revenue"] == {"skipped": True, "reason": "full_universe_revenue_is_fresh"}
+    assert result.source_refresh["financial"] == {"skipped": True, "reason": "full_universe_financials_are_fresh"}
+
+
+
 def test_run_daily_screener_job_refreshes_missing_full_universe_fundamentals(monkeypatch):
     from ai_investment_analyst.analysis import daily_screener_job
 
@@ -155,6 +191,30 @@ def test_run_daily_screener_job_prefers_screening_ticker_override_over_full_univ
 
     assert result.tickers == ["2330", "2454"]
     assert captured["ticker_loader"]() == ["2330", "2454"]
+
+
+
+def test_latest_expected_revenue_period_uses_release_window():
+    from datetime import date
+
+    from ai_investment_analyst.analysis.daily_screener_job import _latest_expected_revenue_period
+
+    assert _latest_expected_revenue_period(date(2026, 5, 9)) == date(2026, 3, 1)
+    assert _latest_expected_revenue_period(date(2026, 5, 12)) == date(2026, 4, 1)
+    assert _latest_expected_revenue_period(date(2026, 1, 5)) == date(2025, 11, 1)
+
+
+
+def test_latest_expected_financial_report_date_uses_quarter_windows():
+    from datetime import date
+
+    from ai_investment_analyst.analysis.daily_screener_job import _latest_expected_financial_report_date
+
+    assert _latest_expected_financial_report_date(date(2026, 3, 15)) == date(2025, 9, 30)
+    assert _latest_expected_financial_report_date(date(2026, 5, 9)) == date(2025, 12, 31)
+    assert _latest_expected_financial_report_date(date(2026, 8, 20)) == date(2026, 3, 31)
+    assert _latest_expected_financial_report_date(date(2026, 11, 1)) == date(2026, 6, 30)
+    assert _latest_expected_financial_report_date(date(2026, 12, 10)) == date(2026, 9, 30)
 
 
 

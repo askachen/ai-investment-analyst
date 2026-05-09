@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
@@ -24,6 +24,7 @@ REQUIRED_SCHEMA_TABLES = (
 )
 FULL_UNIVERSE_REVENUE_REFRESH_LIMIT = 120
 FULL_UNIVERSE_FINANCIAL_REFRESH_LIMIT = 40
+REVENUE_RELEASE_DAY = 12
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1]
 SQL_DIR = PACKAGE_DIR / "sql"
@@ -133,7 +134,38 @@ def _price_refresh_start_date(tickers: Sequence[str], fallback_start_date: str =
     return max((latest_date - timedelta(days=14)).isoformat(), fallback_start_date)
 
 
-def _select_revenue_refresh_tickers(tickers: Sequence[str], limit: int = FULL_UNIVERSE_REVENUE_REFRESH_LIMIT) -> list[str]:
+def _latest_expected_revenue_period(today: date | None = None) -> date:
+    today = today or date.today()
+    if today.day >= REVENUE_RELEASE_DAY:
+        if today.month == 1:
+            return date(today.year - 1, 12, 1)
+        return date(today.year, today.month - 1, 1)
+    if today.month == 1:
+        return date(today.year - 1, 11, 1)
+    if today.month == 2:
+        return date(today.year - 1, 12, 1)
+    return date(today.year, today.month - 2, 1)
+
+
+def _latest_expected_financial_report_date(today: date | None = None) -> date:
+    today = today or date.today()
+    if today.month in (1, 2, 3):
+        return date(today.year - 1, 9, 30)
+    if today.month in (4, 5):
+        return date(today.year - 1, 12, 31)
+    if today.month in (6, 7, 8):
+        return date(today.year, 3, 31)
+    if today.month in (9, 10, 11):
+        return date(today.year, 6, 30)
+    return date(today.year, 9, 30)
+
+
+def _select_revenue_refresh_tickers(
+    tickers: Sequence[str],
+    limit: int = FULL_UNIVERSE_REVENUE_REFRESH_LIMIT,
+    expected_period: date | None = None,
+) -> list[str]:
+    expected_period = expected_period or _latest_expected_revenue_period()
     with get_connection() as conn, conn.cursor() as cur:
         cur.execute(
             '''
@@ -159,16 +191,21 @@ def _select_revenue_refresh_tickers(tickers: Sequence[str], limit: int = FULL_UN
             from latest_price lp
             left join latest_revenue lr on lr.ticker = lp.ticker
             where lr.revenue_period is null
-               or lr.revenue_period < date_trunc('month', current_date) - interval '93 days'
+               or lr.revenue_period < %s
             order by coalesce(lp.volume, 0) desc, lp.ticker
             limit %s
             ''',
-            (list(tickers), list(tickers), limit),
+            (list(tickers), list(tickers), expected_period, limit),
         )
         return [row[0] for row in cur.fetchall()]
 
 
-def _select_financial_refresh_tickers(tickers: Sequence[str], limit: int = FULL_UNIVERSE_FINANCIAL_REFRESH_LIMIT) -> list[str]:
+def _select_financial_refresh_tickers(
+    tickers: Sequence[str],
+    limit: int = FULL_UNIVERSE_FINANCIAL_REFRESH_LIMIT,
+    expected_report_date: date | None = None,
+) -> list[str]:
+    expected_report_date = expected_report_date or _latest_expected_financial_report_date()
     with get_connection() as conn, conn.cursor() as cur:
         cur.execute(
             '''
@@ -204,11 +241,11 @@ def _select_financial_refresh_tickers(tickers: Sequence[str], limit: int = FULL_
             join latest_revenue lr on lr.ticker = lp.ticker
             left join latest_eps le on le.ticker = lp.ticker
             where le.report_date is null
-               or le.report_date < current_date - interval '220 days'
+               or le.report_date < %s
             order by coalesce(lp.volume, 0) desc, lp.ticker
             limit %s
             ''',
-            (list(tickers), list(tickers), list(tickers), limit),
+            (list(tickers), list(tickers), list(tickers), expected_report_date, limit),
         )
         return [row[0] for row in cur.fetchall()]
 
