@@ -52,6 +52,8 @@ def test_stock_detail_page_renders_report_with_traditional_chinese_name(monkeypa
     assert 'financial-snapshot-grid' in response.text
     assert 'scenario-grid' in response.text
     assert 'decision-card-layout' in response.text
+    assert '<details class="report-details">' in response.text
+    assert '展開完整研究細節' in response.text
     assert '.data-quality-grid,\n        .report-insights-grid,\n        .financial-snapshot-grid' in response.text
     assert 'overflow-wrap: anywhere;' in response.text
     assert 'min-height: 44px;' in response.text
@@ -127,5 +129,7 @@ def test_stock_detail_page_renders_data_quality_panel(monkeypatch):
     assert response.status_code == 200
     assert '資料可信度' in response.text
     assert '完整度 75%｜信心 中高' in response.text
+    assert '<details class="data-quality-details">' in response.text
+    assert '查看資料來源狀態' in response.text
     assert '價格資料 1 天內更新。' in response.text
     assert '缺少財報摘要資料。' in response.text

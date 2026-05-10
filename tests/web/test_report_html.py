@@ -37,6 +37,8 @@ Bear Case
     assert '<h1>2330</h1>' in html
     assert '<div class="report-badges">' in html
     assert '<span class="badge badge-rating">投資評級：中立</span>' in html
+    assert '<details class="report-details">' in html
+    assert '<summary>展開完整研究細節</summary>' in html
     assert '<h2>一句話投資主軸</h2>' in html
     assert '<h2>財務摘要表</h2>' in html
     assert '<div class="financial-snapshot-grid">' in html
@@ -89,7 +91,9 @@ AI 需求推升先進製程報價與產能利用率。
 
     html = render_report_html(report)
 
-    assert '<nav class="report-nav" aria-label="報告章節快速導覽">' in html
+    assert '<details class="report-details">' in html
+    assert '<summary>展開完整研究細節</summary>' in html
+    assert html.index('<details class="report-details">') < html.index('<nav class="report-nav" aria-label="報告章節快速導覽">')
     assert '<a href="#section-1">一句話投資主軸</a>' in html
     assert '<a href="#section-2">重點摘要</a>' in html
     assert '<section id="section-1" class="report-section report-section-lead">' in html
@@ -133,6 +137,8 @@ Bear Case
     assert '<article class="financial-snapshot-card">' in html
     assert '<span class="financial-snapshot-label">營收</span>' in html
     assert '<strong class="financial-snapshot-value">6500.00 億元</strong>' in html
+    assert '<details class="report-details">' in html
+    assert html.index('<details class="report-details">') < html.index('<section class="scenario-overview" aria-label="三種情境推演">')
     assert '<section class="scenario-overview" aria-label="三種情境推演">' in html
     assert '<div class="scenario-overview-title">三種情境推演</div>' in html
     assert '<div class="scenario-grid scenario-grid-overview">' in html
@@ -160,6 +166,8 @@ def test_render_report_html_builds_observation_radar_for_catalysts_and_risks():
 
     html = render_report_html(report)
 
+    assert '<details class="report-details">' in html
+    assert html.index('<details class="report-details">') < html.index('<section class="observation-radar" aria-label="投資觀察雷達">')
     assert '<section class="observation-radar" aria-label="投資觀察雷達">' in html
     assert '<div class="observation-radar-title">投資觀察雷達</div>' in html
     assert '<article class="observation-card observation-card-bull">' in html

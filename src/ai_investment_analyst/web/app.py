@@ -329,22 +329,6 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
             )
         body_parts.append('</div></section>')
 
-    if scenario_sections:
-        body_parts.append('<section class="scenario-overview" aria-label="三種情境推演">')
-        body_parts.append('<div class="scenario-overview-title">三種情境推演</div>')
-        body_parts.append('<div class="scenario-grid scenario-grid-overview">')
-        for heading, bullet_items, paragraph_items in scenario_sections:
-            body_parts.append(_render_scenario_card(heading, bullet_items, paragraph_items))
-        body_parts.append('</div></section>')
-
-    if observation_sections:
-        body_parts.append('<section class="observation-radar" aria-label="投資觀察雷達">')
-        body_parts.append('<div class="observation-radar-title">投資觀察雷達</div>')
-        body_parts.append('<div class="observation-grid">')
-        for heading, tone, bullet_items, paragraph_items in observation_sections:
-            body_parts.append(_render_observation_card(heading, tone, bullet_items, paragraph_items))
-        body_parts.append('</div></section>')
-
     if analyst_takeaway:
         body_parts.append('<section class="analyst-takeaway" aria-label="分析師快速結論">')
         body_parts.append('<div class="analyst-takeaway-title">分析師快速結論</div>')
@@ -359,46 +343,69 @@ def render_report_html(report: str, display_title: str | None = None) -> str:
             body_parts.append(f'<li>{escape(item)}</li>')
         body_parts.append('</ul></section>')
 
-    if len(sections) > 1:
-        body_parts.append('<nav class="report-nav" aria-label="報告章節快速導覽"><span class="report-nav-label">快速導覽</span><div class="report-nav-links">')
-        for index, (heading, _) in enumerate(sections, start=1):
-            body_parts.append(f'<a href="#section-{index}">{escape(display_heading(heading))}</a>')
-        body_parts.append('</div></nav>')
+    if sections or scenario_sections or observation_sections:
+        body_parts.append('<details class="report-details">')
+        body_parts.append('<summary>展開完整研究細節</summary>')
+        body_parts.append('<div class="report-details-body">')
 
-    for index, (heading, items) in enumerate(sections, start=1):
-        section_classes = ['report-section']
-        if heading == '一句話投資主軸':
-            section_classes.append('report-section-lead')
-        body_parts.append(f'<section id="section-{index}" class="{" ".join(section_classes)}"><h2>{escape(display_heading(heading))}</h2>')
-        bullet_items = [item[2:] for item in items if item.startswith('- ')]
-        paragraph_items = [item for item in items if not item.startswith('- ')]
-        for paragraph_index, paragraph in enumerate(paragraph_items):
-            paragraph_class = ' class="lead-paragraph"' if heading == '一句話投資主軸' and paragraph_index == 0 else ''
-            body_parts.append(f'<p{paragraph_class}>{escape(paragraph)}</p>')
-        if heading == '財務摘要表':
-            snapshot_cards = _extract_financial_snapshot_cards(items)
-            if snapshot_cards:
-                body_parts.append('<div class="financial-snapshot-grid">')
-                for label, value in snapshot_cards:
-                    body_parts.append(
-                        f'<article class="financial-snapshot-card"><span class="financial-snapshot-label">{escape(label)}</span><strong class="financial-snapshot-value">{escape(value)}</strong></article>'
-                    )
+        if scenario_sections:
+            body_parts.append('<section class="scenario-overview" aria-label="三種情境推演">')
+            body_parts.append('<div class="scenario-overview-title">三種情境推演</div>')
+            body_parts.append('<div class="scenario-grid scenario-grid-overview">')
+            for heading, bullet_items, paragraph_items in scenario_sections:
+                body_parts.append(_render_scenario_card(heading, bullet_items, paragraph_items))
+            body_parts.append('</div></section>')
+
+        if observation_sections:
+            body_parts.append('<section class="observation-radar" aria-label="投資觀察雷達">')
+            body_parts.append('<div class="observation-radar-title">投資觀察雷達</div>')
+            body_parts.append('<div class="observation-grid">')
+            for heading, tone, bullet_items, paragraph_items in observation_sections:
+                body_parts.append(_render_observation_card(heading, tone, bullet_items, paragraph_items))
+            body_parts.append('</div></section>')
+
+        if len(sections) > 1:
+            body_parts.append('<nav class="report-nav" aria-label="報告章節快速導覽"><span class="report-nav-label">快速導覽</span><div class="report-nav-links">')
+            for index, (heading, _) in enumerate(sections, start=1):
+                body_parts.append(f'<a href="#section-{index}">{escape(display_heading(heading))}</a>')
+            body_parts.append('</div></nav>')
+
+        for index, (heading, items) in enumerate(sections, start=1):
+            section_classes = ['report-section']
+            if heading == '一句話投資主軸':
+                section_classes.append('report-section-lead')
+            body_parts.append(f'<section id="section-{index}" class="{" ".join(section_classes)}"><h2>{escape(display_heading(heading))}</h2>')
+            bullet_items = [item[2:] for item in items if item.startswith('- ')]
+            paragraph_items = [item for item in items if not item.startswith('- ')]
+            for paragraph_index, paragraph in enumerate(paragraph_items):
+                paragraph_class = ' class="lead-paragraph"' if heading == '一句話投資主軸' and paragraph_index == 0 else ''
+                body_parts.append(f'<p{paragraph_class}>{escape(paragraph)}</p>')
+            if heading == '財務摘要表':
+                snapshot_cards = _extract_financial_snapshot_cards(items)
+                if snapshot_cards:
+                    body_parts.append('<div class="financial-snapshot-grid">')
+                    for label, value in snapshot_cards:
+                        body_parts.append(
+                            f'<article class="financial-snapshot-card"><span class="financial-snapshot-label">{escape(label)}</span><strong class="financial-snapshot-value">{escape(value)}</strong></article>'
+                        )
+                    body_parts.append('</div>')
+                elif bullet_items:
+                    body_parts.append('<ul>')
+                    for item in bullet_items:
+                        body_parts.append(f'<li>{escape(item)}</li>')
+                    body_parts.append('</ul>')
+            elif heading in {'Bull Case', 'Base Case', 'Bear Case'}:
+                body_parts.append('<div class="scenario-grid">')
+                body_parts.append(_render_scenario_card(heading, bullet_items, paragraph_items))
                 body_parts.append('</div>')
             elif bullet_items:
                 body_parts.append('<ul>')
                 for item in bullet_items:
                     body_parts.append(f'<li>{escape(item)}</li>')
                 body_parts.append('</ul>')
-        elif heading in {'Bull Case', 'Base Case', 'Bear Case'}:
-            body_parts.append('<div class="scenario-grid">')
-            body_parts.append(_render_scenario_card(heading, bullet_items, paragraph_items))
-            body_parts.append('</div>')
-        elif bullet_items:
-            body_parts.append('<ul>')
-            for item in bullet_items:
-                body_parts.append(f'<li>{escape(item)}</li>')
-            body_parts.append('</ul>')
-        body_parts.append('</section>')
+            body_parts.append('</section>')
+
+        body_parts.append('</div></details>')
 
     body_parts.append('</article>')
     return ''.join(body_parts)

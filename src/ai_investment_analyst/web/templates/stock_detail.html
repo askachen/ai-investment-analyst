@@ -222,6 +222,22 @@
         font-size: 13px;
         line-height: 1.6;
       }
+      .data-quality-details {
+        display: grid;
+        gap: 12px;
+      }
+      .data-quality-details summary {
+        min-height: 44px;
+        padding: 11px 13px;
+        border-radius: 14px;
+        background: rgba(96, 165, 250, 0.12);
+        border: 1px solid rgba(96, 165, 250, 0.18);
+        color: #dbeafe;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 800;
+        list-style-position: inside;
+      }
       .data-quality-warnings {
         display: grid;
         gap: 6px;
@@ -232,6 +248,7 @@
       }
 
       .report-card { display: grid; gap: 20px; }
+      .report-card > .report-header { display: none; }
       .report-header h1 { margin: 0 0 8px; font-size: 32px; }
       .report-badges { display: flex; gap: 10px; flex-wrap: wrap; }
       .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 700; }
@@ -388,6 +405,30 @@
         text-decoration: none;
         font-size: 13px;
         font-weight: 700;
+      }
+      .report-details {
+        display: grid;
+        gap: 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(96, 165, 250, 0.18);
+        background: rgba(8, 19, 33, 0.62);
+      }
+      .report-details summary {
+        min-height: 52px;
+        padding: 16px 18px;
+        color: #dbeafe;
+        cursor: pointer;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        list-style-position: inside;
+      }
+      .report-details summary::marker {
+        color: var(--accent);
+      }
+      .report-details-body {
+        display: grid;
+        gap: 18px;
+        padding: 0 18px 18px;
       }
       .report-section { border-top: 1px solid var(--line); padding-top: 18px; scroll-margin-top: 16px; }
       .report-section-lead {
@@ -619,22 +660,25 @@
               </div>
               <div class="data-quality-status">{{ data_quality.overall_status }}</div>
             </div>
-            <div class="data-quality-grid">
-              {% for domain in data_quality.domains %}
-              <article class="data-quality-domain data-quality-domain-{{ domain.status }}">
-                <strong>{{ domain.label }}</strong>
-                <span>{{ domain.status }}</span>
-                <p>{{ domain.message }}</p>
-              </article>
-              {% endfor %}
-            </div>
-            {% if data_quality.warnings %}
-            <div class="data-quality-warnings">
-              {% for warning in data_quality.warnings %}
-              <p class="data-quality-warning">{{ warning }}</p>
-              {% endfor %}
-            </div>
-            {% endif %}
+            <details class="data-quality-details">
+              <summary>查看資料來源狀態</summary>
+              <div class="data-quality-grid">
+                {% for domain in data_quality.domains %}
+                <article class="data-quality-domain data-quality-domain-{{ domain.status }}">
+                  <strong>{{ domain.label }}</strong>
+                  <span>{{ domain.status }}</span>
+                  <p>{{ domain.message }}</p>
+                </article>
+                {% endfor %}
+              </div>
+              {% if data_quality.warnings %}
+              <div class="data-quality-warnings">
+                {% for warning in data_quality.warnings %}
+                <p class="data-quality-warning">{{ warning }}</p>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </details>
           </section>
           {% endif %}
           {{ report_html|safe }}
