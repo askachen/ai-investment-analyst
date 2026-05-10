@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Callable
 
 import yfinance as yf
 
+from ai_investment_analyst.analysis.fundamental_factors import (
+    FundamentalFactorInputs,
+    normalize_fundamental_factors,
+)
 from ai_investment_analyst.analysis.news import (
     NewsItem,
     classify_news_catalysts,
@@ -13,6 +17,8 @@ from ai_investment_analyst.analysis.news import (
     rewrite_news_as_analyst_bullets,
     summarize_news_in_traditional_chinese,
 )
+from ai_investment_analyst.analysis.sector_templates import resolve_sector_template
+from ai_investment_analyst.analysis.valuation_model import ValuationInputs, estimate_intrinsic_value
 from ai_investment_analyst.db.connection import get_connection
 
 
@@ -46,6 +52,9 @@ class StockReportContext:
     recent_prices: list[PricePoint]
     latest_revenue: RevenuePoint | None
     latest_financial_summary: FinancialSummary | None
+    company_name: str | None = None
+    sector: str | None = None
+    industry: str | None = None
 
 
 @dataclass(frozen=True)
@@ -68,6 +77,8 @@ class ReportFacts:
     base_case: list[str]
     bear_case: list[str]
     conclusion: str
+    research_snapshot: list[str] = field(default_factory=list)
+    sector_guidance: list[str] = field(default_factory=list)
 
 
 def candidate_market_tickers(ticker: str) -> list[str]:
@@ -92,6 +103,17 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
             (ticker, limit),
         )
         price_rows = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT s.name, s.local_name, s.sector, s.industry
+            FROM symbols s
+            WHERE s.ticker = %s
+            LIMIT 1
+            """,
+            (ticker,),
+        )
+        symbol_row = cur.fetchone()
 
         cur.execute(
             """
@@ -175,12 +197,23 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
             eps=eps,
         )
 
+    company_name = None
+    sector = None
+    industry = None
+    if symbol_row:
+        company_name = symbol_row[1] or symbol_row[0]
+        sector = symbol_row[2]
+        industry = symbol_row[3]
+
     return StockReportContext(
         ticker=ticker,
         latest=latest,
         recent_prices=points,
         latest_revenue=latest_revenue,
         latest_financial_summary=latest_financial_summary,
+        company_name=company_name,
+        sector=sector,
+        industry=industry,
     )
 
 
@@ -283,6 +316,49 @@ def _news_observation(news_items: list[NewsItem]) -> str:
     return f"近期共有 {len(news_items)} 則可用新聞，來源包含 {publishers}，可作為短期催化與情緒觀察依據。"
 
 
+def _net_margin_pct(summary: FinancialSummary | None) -> Decimal | None:
+    if not summary or summary.revenue in (None, Decimal("0")) or summary.net_income is None:
+        return None
+    return (summary.net_income / summary.revenue) * Decimal("100")
+
+
+def _build_research_snapshot(context: StockReportContext) -> tuple[list[str], list[str]]:
+    revenue_growth = context.latest_revenue.revenue_year_change_percent if context.latest_revenue else None
+    net_margin = _net_margin_pct(context.latest_financial_summary)
+    factor_result = normalize_fundamental_factors(
+        FundamentalFactorInputs(
+            net_margin_pct=net_margin,
+            revenue_growth_yoy_pct=revenue_growth,
+        )
+    )
+    valuation = estimate_intrinsic_value(
+        ValuationInputs(
+            current_price=context.latest.close_price if context.latest else None,
+            eps_ttm=context.latest_financial_summary.eps if context.latest_financial_summary else None,
+            revenue_growth_yoy_pct=revenue_growth,
+            market_pe_median=Decimal("18"),
+        )
+    )
+    template = resolve_sector_template(company_name=context.company_name, industry=context.industry or context.sector)
+
+    fair_range = "資料不足"
+    if valuation.fair_value_range:
+        fair_range = f"{_fmt_price(valuation.fair_value_range[0])} - {_fmt_price(valuation.fair_value_range[1])}"
+    target = _fmt_price(valuation.blended_target_price)
+    margin = _fmt_percent(valuation.margin_of_safety_pct)
+    research_snapshot = [
+        f"基本面因子：綜合分數 {factor_result.composite_score}，缺漏 {len(factor_result.missing_factors)} 項；{factor_result.evidence_summary[0]}",
+        f"多錨估值：目標價 {target}，合理區間 {fair_range}，安全邊際 {margin}，信心 {valuation.confidence_label}。",
+        f"估值方法：已納入 {', '.join(valuation.method_prices.keys()) or '無'}；缺漏 {', '.join(valuation.missing_methods) or '無'}。",
+    ]
+    sector_guidance = [
+        f"產業模板：{template.label}",
+        f"核心檢查：{'、'.join(template.core_metrics[:4])}",
+        f"催化/風險：{'、'.join(template.catalyst_prompts[:2])}；{'、'.join(template.risk_prompts[:2])}",
+    ]
+    return research_snapshot, sector_guidance
+
+
 def build_report_facts(context: StockReportContext, news_items: list[NewsItem] | None = None) -> ReportFacts:
     news_items = news_items or []
     if not context.latest:
@@ -305,6 +381,8 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
             base_case=["待資料補齊後再建構 Base Case。"],
             bear_case=["資料不足本身即為主要風險。"],
             conclusion="待資料補齊後再進行分析。",
+            research_snapshot=["基本面因子：資料不足。", "多錨估值：資料不足。"],
+            sector_guidance=["產業模板：通用", "核心檢查：先補齊價格、營收與財報資料。"],
         )
 
     latest = context.latest
@@ -409,6 +487,7 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
         f"月營收 YoY：{_fmt_percent(context.latest_revenue.revenue_year_change_percent) if context.latest_revenue else 'N/A'}",
         f"月營收 MoM：{_fmt_percent(context.latest_revenue.revenue_month_change_percent) if context.latest_revenue else 'N/A'}",
     ]
+    research_snapshot, sector_guidance = _build_research_snapshot(context)
     target_price_summary = (
         f"以 Base Case {_fmt_price(base_eps)} 元 EPS 與 22 倍本益比推估，目標價約 {_fmt_price(target_price)} 元；若市場願意給到 25 倍，Bull Case 可上看 {_fmt_price(base_eps * Decimal('25'))} 元。"
         if base_eps is not None
@@ -454,6 +533,8 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
         base_case=base_case,
         bear_case=bear_case,
         conclusion=conclusion,
+        research_snapshot=research_snapshot,
+        sector_guidance=sector_guidance,
     )
 
 
@@ -478,6 +559,10 @@ def render_fallback_report(ticker: str, facts: ReportFacts, news_items: list[New
         "",
         "財務摘要表",
         *[f"- {item}" for item in facts.financial_snapshot],
+        "",
+        "研究引擎摘要",
+        *[f"- {item}" for item in facts.research_snapshot],
+        *[f"- {item}" for item in facts.sector_guidance],
         "",
         "價格與技術面觀察",
         facts.price_observation,

@@ -39,6 +39,8 @@ def make_context() -> StockReportContext:
             net_income=Decimal("260000000000"),
             eps=Decimal("10.25"),
         ),
+        company_name="台積電",
+        industry="半導體",
     )
 
 
@@ -106,6 +108,9 @@ def test_generate_stock_report_includes_analyst_sections():
     assert "一句話投資主軸" in report
     assert "財務摘要表" in report
     assert "目標價推導" in report
+    assert "研究引擎摘要" in report
+    assert "多錨估值" in report
+    assert "產業模板：半導體" in report
     assert "Bull Case" in report
     assert "Base Case" in report
     assert "Bear Case" in report
@@ -117,6 +122,9 @@ def test_build_report_facts_produces_financial_snapshot_and_scenarios():
     assert "營收" in facts.financial_snapshot[0]
     assert "EPS" in " ".join(facts.financial_snapshot)
     assert "目標價" in facts.target_price_summary
+    assert any("多錨估值" in item for item in facts.research_snapshot)
+    assert any("基本面因子" in item for item in facts.research_snapshot)
+    assert any("產業模板：半導體" in item for item in facts.sector_guidance)
     assert "月營收" in facts.thesis
     assert "偏高" in facts.thesis
     assert facts.bull_case

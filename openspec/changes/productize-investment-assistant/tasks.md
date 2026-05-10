@@ -26,5 +26,7 @@
 
 ## 5. Delivery rhythm
 - [x] 5.1 Add hourly audit/review automation for backlog grooming
-- [ ] 5.2 Use TDD-first implementation for upcoming high-priority features
-- [ ] 5.3 Report progress in small validated increments
+- [x] 5.2 Use TDD-first implementation for upcoming high-priority features
+  - Added failing tests first for stock report research-engine evidence before integrating factor, valuation, and sector-template outputs.
+- [x] 5.3 Report progress in small validated increments
+  - Delivered a validated increment with targeted tests and full regression suite passing before commit/push.

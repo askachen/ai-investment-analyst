@@ -48,10 +48,12 @@ def build_gemini_prompt(ticker: str, facts: Any, news_items: list[NewsItem]) -> 
                 ]
                 + [f"重點：{point}" for point in facts.key_points]
                 + [f"財務摘要：{item}" for item in facts.financial_snapshot]
+                + [f"研究引擎：{item}" for item in getattr(facts, 'research_snapshot', [])]
+                + [f"產業模板：{item}" for item in getattr(facts, 'sector_guidance', [])]
                 + [f"風險：{risk}" for risk in facts.risk_flags],
             ),
             _render_prompt_section("近期新聞", news_lines),
-            "請固定輸出以下段落：標題、投資評級、重點摘要、價格與技術面觀察、基本面觀察、新聞與市場催化、風險提示、結論。",
+            "請固定輸出以下段落：標題、投資評級、重點摘要、研究引擎摘要、價格與技術面觀察、基本面觀察、估值觀察、新聞與市場催化、風險提示、結論。",
         ]
     )
 
