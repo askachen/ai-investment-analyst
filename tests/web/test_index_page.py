@@ -90,6 +90,9 @@ def test_index_page_contains_form():
     assert response.text.count('<div class="metric-row"><span class="metric-label">收盤價</span><span class="metric-value">${escapeHtml(closePrice)}</span></div>') == 1
     assert 'function buildScreenerTable(payload)' in response.text
     assert 'dashboard-decision-brief' in response.text
+    assert '.dashboard-decision-brief {\n          grid-template-columns: 1fr;' in response.text
+    assert '.summary-grid {\n          grid-template-columns: 1fr;' in response.text
+    assert 'min-height: 44px;' in response.text
     assert '今日決策入口' in response.text
     assert '優先看第一名' in response.text
     assert '資料可信度' in response.text

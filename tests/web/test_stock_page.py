@@ -52,6 +52,9 @@ def test_stock_detail_page_renders_report_with_traditional_chinese_name(monkeypa
     assert 'financial-snapshot-grid' in response.text
     assert 'scenario-grid' in response.text
     assert 'decision-card-layout' in response.text
+    assert '.data-quality-grid,\n        .report-insights-grid,\n        .financial-snapshot-grid' in response.text
+    assert 'overflow-wrap: anywhere;' in response.text
+    assert 'min-height: 44px;' in response.text
     assert '決策卡' in response.text
     assert '建議動作' in response.text
     assert '買進' in response.text

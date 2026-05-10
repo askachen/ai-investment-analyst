@@ -1028,7 +1028,7 @@
 
       @media (max-width: 768px) {
         .page {
-          padding: 6px 4px 18px;
+          padding: 12px 10px 28px;
         }
 
         .hero,
@@ -1038,8 +1038,38 @@
           border-radius: 14px;
         }
 
+        html,
+        body {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
         .hero-top {
           gap: 10px;
+        }
+
+        .hero-top > div,
+        .dashboard-header > div,
+        .stock-header,
+        .stock-main,
+        .stock-link,
+        .metric-card,
+        .summary-card,
+        .factor-card {
+          min-width: 0;
+        }
+
+        .hero p,
+        .strategy-summary,
+        .dashboard-subtitle,
+        .stock-main,
+        .metric-row,
+        .factor-chip,
+        .compact-topline,
+        .score-box-hint {
+          white-space: normal;
+          overflow-wrap: anywhere;
         }
 
         .hero-actions {
@@ -1063,8 +1093,8 @@
         }
 
         .dashboard {
-          margin-bottom: 8px;
-          border-radius: 14px;
+          margin-bottom: 14px;
+          border-radius: 20px;
         }
 
         .dashboard-header {
@@ -1109,6 +1139,39 @@
 
         .strategy-weights {
           display: none;
+        }
+
+        .dashboard-decision-brief {
+          grid-template-columns: 1fr;
+          gap: 10px;
+          padding: 12px 10px 0;
+        }
+
+        .decision-brief-card {
+          min-width: 0;
+          padding: 14px;
+          border-radius: 16px;
+        }
+
+        .decision-brief-title {
+          font-size: 20px;
+          line-height: 1.25;
+          overflow-wrap: anywhere;
+        }
+
+        .decision-brief-body {
+          font-size: 13px;
+          line-height: 1.55;
+          overflow-wrap: anywhere;
+        }
+
+        .decision-brief-action {
+          min-height: 44px;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          border-radius: 12px;
+          background: rgba(96, 165, 250, 0.14);
         }
 
         .snapshot-strip {
@@ -1166,6 +1229,7 @@
         .dashboard-subtitle,
         .muted {
           font-size: 12px;
+          line-height: 1.45;
         }
 
         .legend {
@@ -1202,22 +1266,26 @@
           border: 0;
         }
 
+        .screener-scroll {
+          overflow: visible;
+        }
+
         .screener-table tbody {
           display: grid;
-          gap: 6px;
-          padding: 4px;
+          gap: 12px;
+          padding: 10px;
         }
 
         .screener-table tbody tr {
           border: 1px solid var(--line);
-          border-radius: 10px;
+          border-radius: 18px;
           overflow: hidden;
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(255, 255, 255, 0.045);
         }
 
         .screener-table tbody td {
           border-top: 1px solid var(--line);
-          padding: 10px 10px;
+          padding: 14px;
         }
 
         .screener-table tbody td:first-child {
@@ -1352,7 +1420,7 @@
         }
 
         .summary-grid {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr;
           gap: 8px;
           margin-top: 10px;
         }
@@ -1368,8 +1436,9 @@
         }
 
         .summary-card-body {
-          font-size: 11px;
-          line-height: 1.35;
+          font-size: 12px;
+          line-height: 1.5;
+          overflow-wrap: anywhere;
         }
 
         .detail-section {
@@ -1432,9 +1501,10 @@
         .market-summary,
         .fundamental-summary {
           margin-top: 4px;
-          padding: 8px 9px;
-          font-size: 11px;
-          line-height: 1.35;
+          padding: 10px 11px;
+          font-size: 12px;
+          line-height: 1.5;
+          overflow-wrap: anywhere;
         }
 
         .score-pill {

@@ -107,7 +107,15 @@ def _ensure_schema(
     financial_schema_applier: Callable[[], None],
     screener_schema_applier: Callable[[], None],
 ) -> None:
-    if _schema_ready():
+    using_default_appliers = (
+        base_schema_applier is apply_base_schema
+        and market_seed_applier is apply_market_seed
+        and price_schema_applier is apply_price_schema
+        and revenue_schema_applier is apply_revenue_schema
+        and financial_schema_applier is apply_financial_schema
+        and screener_schema_applier is apply_screener_schema
+    )
+    if using_default_appliers and _schema_ready():
         return
     base_schema_applier()
     market_seed_applier()
