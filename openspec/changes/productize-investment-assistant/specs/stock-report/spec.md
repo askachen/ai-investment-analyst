@@ -29,6 +29,64 @@ The system MUST show whether price, revenue, financial, and news inputs are curr
 - THEN the system shows freshness/completeness status per domain
 - AND lowers confidence or warns appropriately when evidence is incomplete
 
+### Requirement: The system MUST plan watchlist and alert actions from decision evidence
+The system MUST convert stock recommendations, confidence, data quality, and price targets into a watchlist action plan before sending alerts.
+
+#### Scenario: High-confidence buy with fresh data
+- GIVEN a stock has a positive rating, sufficient confidence, fresh data, and a target price
+- WHEN the watchlist workflow is planned
+- THEN the system recommends adding it to the watchlist
+- AND creates price and data-staleness alert rules
+
+#### Scenario: Recommendation has incomplete evidence
+- GIVEN a stock has a positive rating but incomplete or stale data
+- WHEN the watchlist workflow is planned
+- THEN the system requires review before adding it to the watchlist
+- AND includes a data-quality review alert
+
+### Requirement: The system MUST normalize richer fundamental factors before using them in recommendations
+The system MUST convert margin, return, cash-flow, leverage, and revision/trend inputs into bounded factor scores with missing-data status and evidence summaries.
+
+#### Scenario: Rich fundamental inputs are available
+- GIVEN margin, ROE/ROA, cash-flow, leverage, and trend inputs are present
+- WHEN the system normalizes fundamental factors
+- THEN it produces bounded scores, a composite score, and evidence summaries for each factor family
+
+#### Scenario: Some fundamental inputs are missing
+- GIVEN only partial fundamental inputs are available
+- WHEN the system normalizes fundamental factors
+- THEN it marks missing or partial factor families
+- AND applies conservative scores instead of pretending the evidence is complete
+
+### Requirement: The system MUST estimate valuation with multiple anchors, not only fixed PE
+The system MUST blend PE multiple, PB/ROE, and growth-based valuation anchors when available, and disclose missing methods.
+
+#### Scenario: Multiple valuation anchors are available
+- GIVEN current price, EPS, book value, ROE, growth, and market or sector multiples are available
+- WHEN the system estimates intrinsic value
+- THEN it produces a blended target price, fair-value range, margin of safety, label, confidence, and method evidence
+
+#### Scenario: Some valuation anchors are unavailable
+- GIVEN only EPS and a market multiple are available
+- WHEN the system estimates intrinsic value
+- THEN it still uses a PE anchor
+- AND marks PB/ROE or growth anchors as missing with lower confidence
+
+### Requirement: The system MUST apply sector-specific analysis templates
+The system MUST choose analysis prompts, core metrics, valuation methods, catalysts, and risks based on the stock's sector when sector evidence is available.
+
+#### Scenario: Semiconductor stock report
+- GIVEN a stock belongs to the semiconductor sector
+- WHEN the system builds analysis guidance
+- THEN it highlights semiconductor-specific metrics such as margins, capex, utilization, inventory, and product mix
+- AND includes sector-specific catalysts and risks such as AI demand, advanced-node ramp, cycle reversal, and capex risk
+
+#### Scenario: Unknown sector stock report
+- GIVEN the system cannot resolve a stock's sector
+- WHEN the system builds analysis guidance
+- THEN it falls back to a general template
+- AND still provides core metrics, valuation methods, catalysts, risks, and evidence checks
+
 ## MODIFIED Requirements
 
 ### Requirement: Canonical-price-based stock report

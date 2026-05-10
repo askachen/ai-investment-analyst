@@ -104,6 +104,132 @@
         padding: 22px 24px 24px;
       }
 
+      .decision-card-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(160px, 0.85fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .decision-card {
+        display: grid;
+        gap: 10px;
+        padding: 18px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(15, 23, 42, 0.88));
+        border: 1px solid rgba(96, 165, 250, 0.22);
+      }
+      .decision-card-primary {
+        border-color: rgba(96, 165, 250, 0.36);
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(15, 23, 42, 0.9));
+      }
+      .decision-card-label {
+        color: #bfd7f7;
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+      }
+      .decision-card-title {
+        margin: 0;
+        color: #f8fbff;
+        font-size: 24px;
+        line-height: 1.15;
+      }
+      .decision-card-text {
+        margin: 0;
+        color: #dce8f8;
+        font-size: 13px;
+        line-height: 1.65;
+      }
+      .decision-card-score {
+        color: #c9ffe6;
+        font-size: 28px;
+        font-weight: 900;
+        line-height: 1;
+      }
+      .decision-card-warning {
+        color: #ffd4da;
+      }
+
+      .data-quality-panel {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 20px;
+        padding: 18px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(96, 165, 250, 0.12));
+        border: 1px solid rgba(96, 165, 250, 0.18);
+      }
+      .data-quality-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .data-quality-title {
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        color: #bfd7f7;
+      }
+      .data-quality-summary {
+        margin-top: 6px;
+        color: #ecf5ff;
+        font-size: 15px;
+        font-weight: 800;
+      }
+      .data-quality-status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 7px 11px;
+        background: rgba(52, 211, 153, 0.14);
+        color: #c9ffe6;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .data-quality-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px;
+      }
+      .data-quality-domain {
+        padding: 13px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+      }
+      .data-quality-domain strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #f8fbff;
+      }
+      .data-quality-domain span {
+        display: inline-flex;
+        margin-bottom: 7px;
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: rgba(96, 165, 250, 0.12);
+        color: #dbeafe;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .data-quality-domain p,
+      .data-quality-warning {
+        margin: 0;
+        color: #99a9bf;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .data-quality-warnings {
+        display: grid;
+        gap: 6px;
+      }
+      .data-quality-warning::before {
+        content: '• ';
+        color: #fbbf24;
+      }
+
       .report-card { display: grid; gap: 20px; }
       .report-header h1 { margin: 0 0 8px; font-size: 32px; }
       .report-badges { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -357,6 +483,7 @@
         .header { padding: 16px 16px 14px; }
         .header h1 { font-size: 26px; }
         .report-wrapper { padding: 16px; }
+        .decision-card-layout { grid-template-columns: 1fr; }
         .report-header h1 { font-size: 24px; }
         .actions { width: 100%; }
         .back-link,
@@ -381,7 +508,55 @@
             {% endif %}
           </div>
         </header>
-        <div class="report-wrapper">{{ report_html|safe }}</div>
+        <div class="report-wrapper">
+          {% if decision_card %}
+          <section class="decision-card-layout" aria-label="決策卡">
+            <article class="decision-card decision-card-primary">
+              <span class="decision-card-label">決策卡</span>
+              <h2 class="decision-card-title">建議動作：{{ decision_card.rating }}</h2>
+              <p class="decision-card-text">{{ decision_card.thesis }}</p>
+            </article>
+            <article class="decision-card">
+              <span class="decision-card-label">推薦信心</span>
+              <div class="decision-card-score">{{ decision_card.confidence.level }}｜{{ decision_card.confidence.score }}</div>
+              <p class="decision-card-text">分數已依資料完整度、核心訊號與風險揭露調整。</p>
+            </article>
+            <article class="decision-card">
+              <span class="decision-card-label">下一步</span>
+              <p class="decision-card-text">{{ decision_card.next_step }}</p>
+              <p class="decision-card-text decision-card-warning">{{ decision_card.risk }}</p>
+            </article>
+          </section>
+          {% endif %}
+          {% if data_quality %}
+          <section class="data-quality-panel" aria-label="資料可信度">
+            <div class="data-quality-header">
+              <div>
+                <div class="data-quality-title">資料可信度</div>
+                <div class="data-quality-summary">完整度 {{ data_quality.completeness_pct }}%｜信心 {{ data_quality.confidence_label }}</div>
+              </div>
+              <div class="data-quality-status">{{ data_quality.overall_status }}</div>
+            </div>
+            <div class="data-quality-grid">
+              {% for domain in data_quality.domains %}
+              <article class="data-quality-domain data-quality-domain-{{ domain.status }}">
+                <strong>{{ domain.label }}</strong>
+                <span>{{ domain.status }}</span>
+                <p>{{ domain.message }}</p>
+              </article>
+              {% endfor %}
+            </div>
+            {% if data_quality.warnings %}
+            <div class="data-quality-warnings">
+              {% for warning in data_quality.warnings %}
+              <p class="data-quality-warning">{{ warning }}</p>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </section>
+          {% endif %}
+          {{ report_html|safe }}
+        </div>
       </section>
     </main>
   </body>

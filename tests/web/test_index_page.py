@@ -89,3 +89,10 @@ def test_index_page_contains_form():
     assert '進入完整報告' in response.text
     assert response.text.count('<div class="metric-row"><span class="metric-label">收盤價</span><span class="metric-value">${escapeHtml(closePrice)}</span></div>') == 1
     assert 'function buildScreenerTable(payload)' in response.text
+    assert 'dashboard-decision-brief' in response.text
+    assert '今日決策入口' in response.text
+    assert '優先看第一名' in response.text
+    assert '資料可信度' in response.text
+    assert '下一步行動' in response.text
+    assert 'function buildDashboardDecisionBrief(payload)' in response.text
+    assert 'payload.results[0]' in response.text

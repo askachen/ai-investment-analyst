@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from functools import lru_cache
 from html import escape
 import os
@@ -16,9 +17,11 @@ from pydantic import BaseModel, Field
 import requests
 import yfinance as yf
 
+from ai_investment_analyst.analysis.data_quality import StockDataQuality, assess_stock_report_data_quality
+from ai_investment_analyst.analysis.recommendation_confidence import derive_recommendation_confidence
 from ai_investment_analyst.analysis.screener import calculate_total_score, get_strategy_profile, list_strategy_profiles
 from ai_investment_analyst.analysis.stock_report import candidate_market_tickers
-from ai_investment_analyst.analysis.stock_report import generate_stock_report
+from ai_investment_analyst.analysis.stock_report import generate_stock_report, load_stock_report_context
 from ai_investment_analyst.db.connection import get_connection
 from ai_investment_analyst.db.screener_store import load_latest_screener_snapshot
 
@@ -407,7 +410,7 @@ def resolve_stock_name(ticker: str) -> str | None:
         if chinese_name:
             return chinese_name
         db_name = load_symbol_display_name_from_db(ticker)
-        if db_name:
+        if db_name and db_name != ticker:
             return db_name
         builtin_name = lookup_builtin_taiwan_stock_name(ticker)
         if builtin_name:
@@ -493,9 +496,62 @@ def resolve_screener_display_name(ticker: str) -> str | None:
         if chinese_name:
             return chinese_name
         db_name = load_symbol_display_name_from_db(ticker)
-        if db_name:
+        if db_name and db_name != ticker:
             return db_name
     return resolve_stock_name(ticker)
+
+
+def build_stock_data_quality(ticker: str) -> StockDataQuality | None:
+    try:
+        context = load_stock_report_context(ticker)
+    except Exception:
+        return None
+    return assess_stock_report_data_quality(context)
+
+
+def serialize_stock_data_quality(quality: StockDataQuality | None) -> dict | None:
+    return asdict(quality) if quality is not None else None
+
+
+def build_stock_decision_card(report: str, data_quality: StockDataQuality | None = None) -> dict[str, object]:
+    lines = [line.strip() for line in report.splitlines() if line.strip()]
+    rating = next((line.removeprefix('投資評級：').strip() for line in lines if line.startswith('投資評級：')), '待觀察')
+    report_confidence = next((line.removeprefix('信心等級：').strip() for line in lines if line.startswith('信心等級：')), None)
+
+    thesis = '請閱讀完整報告確認投資主軸。'
+    for index, line in enumerate(lines):
+        if line == '一句話投資主軸' and index + 1 < len(lines):
+            thesis = lines[index + 1]
+            break
+    if thesis == '請閱讀完整報告確認投資主軸。':
+        thesis = next((line for line in lines if line not in {'分析師觀點', '投資建議', '結論'} and not line.startswith(('【', '投資評級：', '信心等級：'))), thesis)
+
+    risk_line = next((line[2:] for line in lines if line.startswith('- ') and any(keyword in line for keyword in ('風險', '轉弱', '競爭', '修正'))), None)
+    if risk_line is None:
+        risk_line = next((line for line in lines if any(keyword in line for keyword in ('潛在風險', 'Bear Case', '風險提示'))), '尚未列出明確風險，需保守解讀。')
+
+    has_core_signals = any(keyword in report for keyword in ('財務摘要表', '估值觀察', '目標價推導', '價格與技術面觀察', '基本面觀察'))
+    has_clear_risk_factors = any(keyword in report for keyword in ('潛在風險', '風險提示', 'Bear Case'))
+    recommendation_confidence = derive_recommendation_confidence(
+        data_quality,
+        report_confidence=report_confidence,
+        has_core_signals=has_core_signals,
+        has_clear_risk_factors=has_clear_risk_factors,
+    )
+
+    next_step = '先檢查資料可信度與風險，再決定是否加入觀察清單。'
+    if rating in {'買進', '加碼'}:
+        next_step = '先確認風險與資料品質，再評估分批進場或加入觀察清單。'
+    elif rating in {'賣出', '減碼'}:
+        next_step = '優先確認下修理由，避免只因短線波動做決策。'
+
+    return {
+        'rating': rating,
+        'thesis': thesis,
+        'risk': risk_line,
+        'next_step': next_step,
+        'confidence': asdict(recommendation_confidence),
+    }
 
 
 def _utc_now() -> datetime:
@@ -716,6 +772,9 @@ def stock_detail_page(request: Request, ticker: str):
     stock_name = resolve_stock_name(normalized_ticker)
     display_title = f'{normalized_ticker} {stock_name}' if stock_name else normalized_ticker
     report_html = render_report_html(report, display_title=display_title)
+    data_quality_obj = build_stock_data_quality(normalized_ticker)
+    data_quality = serialize_stock_data_quality(data_quality_obj)
+    decision_card = build_stock_decision_card(report, data_quality_obj)
     return TEMPLATES.TemplateResponse(
         request,
         'stock_detail.html',
@@ -723,6 +782,8 @@ def stock_detail_page(request: Request, ticker: str):
             'ticker': normalized_ticker,
             'display_title': display_title,
             'report_html': report_html,
+            'data_quality': data_quality,
+            'decision_card': decision_card,
             'show_logout': is_auth_enabled() and is_authenticated(request),
         },
     )

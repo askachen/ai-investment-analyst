@@ -218,6 +218,62 @@
         color: #ffffff;
       }
 
+      .dashboard-decision-brief {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(180px, 0.8fr));
+        gap: 12px;
+        padding: 16px 18px 0;
+      }
+
+      .decision-brief-card {
+        padding: 16px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.48));
+        border: 1px solid rgba(96, 165, 250, 0.18);
+      }
+
+      .decision-brief-card.is-primary {
+        border-color: rgba(96, 165, 250, 0.34);
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.26), rgba(15, 23, 42, 0.58));
+      }
+
+      .decision-brief-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #9db2d1;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+      }
+
+      .decision-brief-title {
+        margin: 0 0 8px;
+        color: #f8fbff;
+        font-size: 22px;
+        line-height: 1.15;
+      }
+
+      .decision-brief-body {
+        margin: 0;
+        color: #dce8f8;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .decision-brief-action {
+        display: inline-flex;
+        margin-top: 12px;
+        color: #dbeafe;
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .decision-brief-action:hover,
+      .decision-brief-action:focus-visible {
+        color: #ffffff;
+      }
+
       .snapshot-strip {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1653,6 +1709,37 @@
         return `總分：綜合五個因子加權後的結果。此策略權重為 ${summary}。`;
       }
 
+      function buildDashboardDecisionBrief(payload) {
+        const topPick = payload.results[0];
+        if (!topPick) {
+          return '';
+        }
+        const reasons = topPick.reasons || [];
+        const topName = topPick.display_name || topPick.ticker;
+        const strategyLabel = payload.strategy?.label || '平衡多因子';
+        const freshnessMessage = payload.freshness_message || '等待最新批次。';
+        return `
+          <section class="dashboard-decision-brief" aria-label="今日決策入口">
+            <article class="decision-brief-card is-primary">
+              <span class="decision-brief-label">今日決策入口</span>
+              <h3 class="decision-brief-title">優先看第一名：${escapeHtml(topName)}</h3>
+              <p class="decision-brief-body">${escapeHtml(strategyLabel)} 目前排序第一，模型分數 ${escapeHtml(formatDecimal(topPick.total_score))}。${escapeHtml(buildMarketSummary(reasons))}</p>
+              <a class="decision-brief-action" href="${buildReportUrl(topPick.ticker)}">下一步行動：進入完整報告</a>
+            </article>
+            <article class="decision-brief-card">
+              <span class="decision-brief-label">資料可信度</span>
+              <h3 class="decision-brief-title">${escapeHtml(payload.freshness_status || 'unknown')}</h3>
+              <p class="decision-brief-body">${escapeHtml(freshnessMessage)}</p>
+            </article>
+            <article class="decision-brief-card">
+              <span class="decision-brief-label">下一步行動</span>
+              <h3 class="decision-brief-title">先讀榜首，再比前 12 名</h3>
+              <p class="decision-brief-body">從榜首完整報告確認風險與資料品質，再回到排行比較盤面與基本面。</p>
+            </article>
+          </section>
+        `;
+      }
+
       function buildScreenerSnapshot(payload) {
         const candidateCount = payload.candidate_count ?? payload.results.length ?? 'N/A';
         const universeSize = payload.universe_size ?? payload.results.length ?? 'N/A';
@@ -1850,6 +1937,7 @@
           screener.style.border = '0';
           screener.style.background = 'transparent';
           screener.innerHTML = `
+            ${buildDashboardDecisionBrief(payload)}
             ${buildScreenerSnapshot(payload)}
             ${buildScreenerTable(payload)}
           `;

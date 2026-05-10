@@ -6,19 +6,23 @@
 - [x] 1.3 Define product roadmap priorities in specs
 
 ## 2. Trust & Validation
-- [ ] 2.1 Design strategy outcome tracking for screener runs
-- [ ] 2.2 Design data freshness / completeness surfaces for UI
-- [ ] 2.3 Define recommendation confidence and evidence display rules
+- [x] 2.1 Design strategy outcome tracking for screener runs
+- [x] 2.2 Design data freshness / completeness surfaces for UI
+- [x] 2.3 Define recommendation confidence and evidence display rules
 
 ## 3. Decision UX
-- [ ] 3.1 Redesign dashboard information architecture
-- [ ] 3.2 Redesign stock detail page into decision card layout
-- [ ] 3.3 Plan watchlist and alert workflow
+- [x] 3.1 Redesign dashboard information architecture
+- [x] 3.2 Redesign stock detail page into decision card layout
+- [x] 3.3 Plan watchlist and alert workflow
 
 ## 4. Research Depth
-- [ ] 4.1 Plan richer fundamental factor set
-- [ ] 4.2 Plan valuation improvements beyond simple PE heuristics
-- [ ] 4.3 Plan sector-specific analysis templates
+- [x] 4.1 Plan richer fundamental factor set
+  - Implemented normalized factor schema for profitability, cash-flow quality, leverage risk, and revision/trend signals.
+  - Added pure analysis tests for factor normalization, missing-data penalties, and factor-to-evidence summaries.
+- [x] 4.2 Plan valuation improvements beyond simple PE heuristics
+  - Implemented multi-anchor valuation model blending PE multiple, PB/ROE, and growth-based anchors with missing-method confidence.
+- [x] 4.3 Plan sector-specific analysis templates
+  - Implemented sector templates for general, semiconductor, financial, and consumer analysis guidance.
 
 ## 5. Delivery rhythm
 - [x] 5.1 Add hourly audit/review automation for backlog grooming
