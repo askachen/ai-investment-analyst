@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Callable
 
-from ai_investment_analyst.analysis.stock_report import StockReportContext, load_stock_report_context
+from ai_investment_analyst.analysis.stock_report import StockReportContext, _valuation_eps_ttm, load_stock_report_context
 from ai_investment_analyst.db.connection import get_connection
 
 
@@ -83,10 +83,10 @@ STRATEGY_PROFILES = {
         label="價值穩健",
         description="提高估值與品質權重，偏好獲利穩定且評價較合理的標的。",
         weights={
-            "momentum": Decimal("0.15"),
-            "revenue": Decimal("0.15"),
+            "momentum": Decimal("0.10"),
+            "revenue": Decimal("0.05"),
             "quality": Decimal("0.20"),
-            "valuation": Decimal("0.40"),
+            "valuation": Decimal("0.55"),
             "liquidity": Decimal("0.10"),
         },
     ),
@@ -145,8 +145,10 @@ def _revenue_score(candidate: ScreeningCandidate) -> Decimal:
 def _quality_score(candidate: ScreeningCandidate) -> Decimal:
     if candidate.eps <= ZERO:
         return ZERO
-    raw = Decimal("40") + (candidate.eps * Decimal("6"))
-    return _clamp_score(raw)
+    # EPS is an absolute per-share amount and is not comparable across stocks
+    # with different price levels or share bases. Treat positive TTM EPS as a
+    # quality gate here; valuation attractiveness is handled by PE/PB below.
+    return Decimal("70.00")
 
 
 def _valuation_score(candidate: ScreeningCandidate) -> Decimal:
@@ -259,7 +261,10 @@ def load_screener_candidates(
             continue
         if not context.latest_revenue:
             continue
-        if not context.latest_financial_summary or context.latest_financial_summary.eps in (None, ZERO):
+        if context.latest_revenue.revenue_year_change_percent is None:
+            continue
+        eps = _valuation_eps_ttm(context.latest_financial_summary)
+        if eps in (None, ZERO):
             continue
         if len(context.recent_prices) < 10:
             continue
@@ -269,7 +274,6 @@ def load_screener_candidates(
         if price_5d_change_pct is None or price_10d_change_pct is None:
             continue
 
-        eps = context.latest_financial_summary.eps
         pe_ratio = _quantize_2(context.latest.close_price / eps)
         pb_ratio = pb_ratio_loader(ticker) if pb_ratio_loader is not None else None
         candidates.append(

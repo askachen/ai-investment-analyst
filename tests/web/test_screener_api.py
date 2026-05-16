@@ -195,18 +195,18 @@ def test_latest_screener_api_returns_empty_payload_when_missing(monkeypatch):
                     'liquidity': '10%',
                 },
             },
-            {
-                'key': 'value',
-                'label': '價值穩健',
-                'description': '提高估值與品質權重，偏好獲利穩定且評價較合理的標的。',
-                'weights': {
-                    'momentum': '15%',
-                    'revenue': '15%',
-                    'quality': '20%',
-                    'valuation': '40%',
-                    'liquidity': '10%',
+                {
+                    'key': 'value',
+                    'label': '價值穩健',
+                    'description': '提高估值與品質權重，偏好獲利穩定且評價較合理的標的。',
+                    'weights': {
+                        'momentum': '10%',
+                        'revenue': '5%',
+                        'quality': '20%',
+                        'valuation': '55%',
+                        'liquidity': '10%',
+                    },
                 },
-            },
             {
                 'key': 'flow',
                 'label': '流動性強勢',

@@ -397,9 +397,12 @@ def store_price_row(cur, *, symbol_id: str, data_source_id: str, ingestion_run_i
     trading_date = datetime.strptime(row["date"], "%Y-%m-%d").date()
     open_price = decimal_or_none(row.get("open"))
     close_price = decimal_or_none(row.get("close"))
+    price_change = decimal_or_none(row.get("spread"))
     change_percent = None
-    if open_price not in (None, Decimal("0")) and close_price is not None:
-        change_percent = ((close_price - open_price) / open_price) * Decimal("100")
+    if close_price is not None and price_change is not None:
+        previous_close = close_price - price_change
+        if previous_close != Decimal("0"):
+            change_percent = (price_change / previous_close) * Decimal("100")
     upsert_price_daily_raw(
         cur,
         symbol_id=symbol_id,
@@ -411,7 +414,7 @@ def store_price_row(cur, *, symbol_id: str, data_source_id: str, ingestion_run_i
         low_price=decimal_or_none(row.get("min")),
         close_price=close_price,
         adjusted_close=None,
-        price_change=decimal_or_none(row.get("spread")),
+        price_change=price_change,
         change_percent=change_percent,
         volume=int_or_none(row.get("Trading_Volume")),
         turnover_value=decimal_or_none(row.get("Trading_money")),

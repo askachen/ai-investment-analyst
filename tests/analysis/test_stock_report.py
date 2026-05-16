@@ -38,6 +38,8 @@ def make_context() -> StockReportContext:
             revenue=Decimal("650000000000"),
             net_income=Decimal("260000000000"),
             eps=Decimal("10.25"),
+            eps_ttm=Decimal("41.00"),
+            eps_ttm_periods=4,
         ),
         company_name="台積電",
         industry="半導體",
@@ -71,6 +73,8 @@ def make_soft_context() -> StockReportContext:
             revenue=Decimal("48000000000"),
             net_income=Decimal("3500000000"),
             eps=Decimal("2.1"),
+            eps_ttm=Decimal("8.40"),
+            eps_ttm_periods=4,
         ),
     )
 
@@ -126,7 +130,7 @@ def test_build_report_facts_produces_financial_snapshot_and_scenarios():
     assert any("基本面因子" in item for item in facts.research_snapshot)
     assert any("產業模板：半導體" in item for item in facts.sector_guidance)
     assert "月營收" in facts.thesis
-    assert "偏高" in facts.thesis
+    assert "合理" in facts.thesis
     assert facts.bull_case
     assert facts.base_case
     assert facts.bear_case
@@ -139,5 +143,54 @@ def test_build_report_facts_generates_ticker_specific_thesis_from_context():
     assert semiconductor_facts.thesis != cyclical_facts.thesis
     assert "月營收" in semiconductor_facts.thesis
     assert "短線" in cyclical_facts.thesis
-    assert "偏高" in semiconductor_facts.thesis
-    assert "合理" in cyclical_facts.thesis
+    assert "合理" in semiconductor_facts.thesis
+    assert "偏低" in cyclical_facts.thesis
+
+
+def test_build_report_facts_uses_ttm_eps_for_pe_and_fair_value_range():
+    context = StockReportContext(
+        ticker="2454",
+        latest=PricePoint(trading_date="2026-05-08", close_price=Decimal("3630"), source_code="twse"),
+        recent_prices=[
+            PricePoint(trading_date=f"2026-05-{8-index:02d}", close_price=Decimal("3630") - Decimal(index * 10), source_code="twse")
+            for index in range(10)
+        ],
+        latest_revenue=RevenuePoint(
+            revenue_period="2026-04-01",
+            revenue=Decimal("46736664000"),
+            revenue_month_change_percent=Decimal("-26.07"),
+            revenue_year_change_percent=Decimal("-4.14"),
+        ),
+        latest_financial_summary=FinancialSummary(
+            report_date="2025-12-31",
+            revenue=Decimal("150188010000"),
+            net_income=None,
+            eps=Decimal("14.40"),
+            eps_ttm=Decimal("66.17"),
+            eps_ttm_periods=4,
+        ),
+    )
+
+    facts = build_report_facts(context)
+
+    assert "TTM EPS" in facts.valuation_observation
+    assert "54.86 倍" in facts.valuation_observation
+    assert "1323.40 - 1654.25" in facts.valuation_range
+    assert "316.80" not in facts.target_price_summary
+
+
+def test_build_report_facts_does_not_use_quarterly_eps_as_ttm_fallback():
+    context = make_context()
+    context = StockReportContext(
+        **{**context.__dict__, "latest_financial_summary": FinancialSummary(
+            report_date="2025-12-31",
+            revenue=Decimal("650000000000"),
+            net_income=Decimal("260000000000"),
+            eps=Decimal("10.25"),
+        )}
+    )
+
+    facts = build_report_facts(context)
+
+    assert facts.valuation_range == "合理價區間：資料不足。"
+    assert "缺乏足夠 TTM EPS" in facts.target_price_summary

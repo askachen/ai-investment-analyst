@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import date
 
 import pandas as pd
 
@@ -41,6 +42,8 @@ def test_build_report_facts_derives_rating_and_risk_flags():
             revenue=Decimal("650000000000"),
             net_income=Decimal("260000000000"),
             eps=Decimal("10.25"),
+            eps_ttm=Decimal("41.00"),
+            eps_ttm_periods=4,
         ),
     )
 
@@ -89,3 +92,62 @@ def test_load_market_context_from_yfinance_leaves_monthly_revenue_change_unknown
     assert context.latest_revenue is not None
     assert context.latest_revenue.revenue_year_change_percent == Decimal("35.100")
     assert context.latest_revenue.revenue_month_change_percent is None
+    assert context.latest_financial_summary is not None
+    assert context.latest_financial_summary.eps == Decimal("12.34")
+    assert context.latest_financial_summary.eps_ttm == Decimal("12.34")
+    assert context.latest_financial_summary.eps_ttm_periods == 4
+
+
+def test_load_stock_report_context_uses_stored_revenue_growth_not_row_position(monkeypatch):
+    class FakeCursor:
+        def __init__(self):
+            self.calls = 0
+            self.rows = []
+
+        def execute(self, *_args, **_kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                self.rows = [("2454", date(2026, 5, 8), Decimal("3630"), "twse")]
+            elif self.calls == 2:
+                self.rows = [("2454", "聯發科", "半導體", "半導體")]
+            elif self.calls == 3:
+                self.rows = [
+                    (date(2026, 3, 1), Decimal("1200"), Decimal("19.8"), Decimal("35.1")),
+                    (date(2026, 1, 1), Decimal("1000"), None, None),
+                    (date(2025, 3, 1), Decimal("900"), None, None),
+                ]
+            else:
+                self.rows = []
+
+        def fetchall(self):
+            return self.rows
+
+        def fetchone(self):
+            return self.rows[0] if self.rows else None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeConnection:
+        def __init__(self):
+            self.cursor_instance = FakeCursor()
+
+        def cursor(self):
+            return self.cursor_instance
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(stock_report, "get_connection", lambda: FakeConnection())
+
+    context = stock_report.load_stock_report_context("2454")
+
+    assert context.latest_revenue is not None
+    assert context.latest_revenue.revenue_month_change_percent == Decimal("19.8")
+    assert context.latest_revenue.revenue_year_change_percent == Decimal("35.1")

@@ -35,6 +35,8 @@ def make_context(
             revenue=Decimal("3000000000"),
             net_income=Decimal("500000000"),
             eps=Decimal(eps),
+            eps_ttm=Decimal(eps) * Decimal("4"),
+            eps_ttm_periods=4,
         ),
     )
 

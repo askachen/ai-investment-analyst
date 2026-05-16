@@ -6,6 +6,33 @@ from types import SimpleNamespace
 from ai_investment_analyst.etl import twse_tpex_loader
 
 
+def test_store_price_row_uses_previous_close_basis_for_official_change_percent(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(twse_tpex_loader, "upsert_price_daily_raw", lambda *args, **kwargs: captured.update(kwargs))
+    monkeypatch.setattr(twse_tpex_loader, "refresh_price_daily_canonical", lambda *args, **kwargs: None)
+
+    twse_tpex_loader.store_price_row(
+        object(),
+        symbol_id="symbol-id",
+        data_source_id="source-id",
+        ingestion_run_id="run-id",
+        row={
+            "date": "2026-05-07",
+            "open": Decimal("95"),
+            "max": Decimal("101"),
+            "min": Decimal("94"),
+            "close": Decimal("100"),
+            "spread": Decimal("2"),
+            "Trading_Volume": 1000,
+            "Trading_money": Decimal("100000"),
+            "Trading_turnover": 10,
+        },
+    )
+
+    assert captured["price_change"] == Decimal("2")
+    assert captured["change_percent"] == Decimal("2.040816326530612244897959184")
+
+
 def test_official_data_tls_adapter_disables_only_openssl_strict_flag(monkeypatch):
     class FakeContext:
         verify_flags = ssl.VERIFY_X509_STRICT | ssl.VERIFY_X509_PARTIAL_CHAIN

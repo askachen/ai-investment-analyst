@@ -230,8 +230,10 @@ def store_price_row(cur, *, symbol_id: str, data_source_id: str, ingestion_run_i
     turnover_value = decimal_or_none(row.get("Trading_money"))
     trade_count = int_or_none(row.get("Trading_turnover"))
     change_percent = None
-    if open_price not in (None, Decimal("0")) and close_price is not None:
-        change_percent = ((close_price - open_price) / open_price) * Decimal("100")
+    if close_price is not None and price_change is not None:
+        previous_close = close_price - price_change
+        if previous_close != Decimal("0"):
+            change_percent = (price_change / previous_close) * Decimal("100")
     upsert_price_daily_raw(
         cur,
         symbol_id=symbol_id,

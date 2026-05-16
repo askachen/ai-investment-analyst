@@ -191,10 +191,6 @@ def store_price_row(cur, *, symbol_id: str, data_source_id: str, ingestion_run_i
     volume = int_or_none(row.get("Volume"))
     price_change = None
     change_percent = None
-    if open_price is not None and close_price is not None:
-        price_change = close_price - open_price
-        if open_price != 0:
-            change_percent = (price_change / open_price) * Decimal("100")
     turnover_value = close_price * Decimal(volume) if close_price is not None and volume is not None else None
 
     upsert_price_daily_raw(

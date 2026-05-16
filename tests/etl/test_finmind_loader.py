@@ -1,6 +1,34 @@
 from types import SimpleNamespace
+from decimal import Decimal
 
 from ai_investment_analyst.etl import finmind_loader
+
+
+def test_store_price_row_uses_spread_not_open_close_for_change_percent(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(finmind_loader, "upsert_price_daily_raw", lambda *args, **kwargs: captured.update(kwargs))
+    monkeypatch.setattr(finmind_loader, "refresh_price_daily_canonical", lambda *args, **kwargs: None)
+
+    finmind_loader.store_price_row(
+        object(),
+        symbol_id="symbol-id",
+        data_source_id="source-id",
+        ingestion_run_id="run-id",
+        row={
+            "date": "2026-05-07",
+            "open": Decimal("95"),
+            "max": Decimal("101"),
+            "min": Decimal("94"),
+            "close": Decimal("100"),
+            "spread": Decimal("2"),
+            "Trading_Volume": 1000,
+            "Trading_money": Decimal("100000"),
+            "Trading_turnover": 10,
+        },
+    )
+
+    assert captured["price_change"] == Decimal("2")
+    assert captured["change_percent"] == Decimal("2.040816326530612244897959184")
 
 
 def test_sync_taiwan_stock_universe_filters_non_stock_like_rows(monkeypatch):

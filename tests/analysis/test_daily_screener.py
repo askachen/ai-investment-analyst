@@ -35,6 +35,8 @@ def make_context(
             revenue=Decimal("3000000000"),
             net_income=Decimal("500000000"),
             eps=Decimal(eps),
+            eps_ttm=Decimal(eps) * Decimal("4"),
+            eps_ttm_periods=4,
         ),
     )
 
@@ -102,6 +104,8 @@ def test_generate_daily_screening_marks_missing_market_fallback_metrics_as_unkno
             revenue=Decimal('3000000000'),
             net_income=Decimal('500000000'),
             eps=Decimal('10.25'),
+            eps_ttm=Decimal('41.00'),
+            eps_ttm_periods=4,
         ),
     )
 

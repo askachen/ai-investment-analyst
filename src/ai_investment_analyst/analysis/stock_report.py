@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Callable
 
@@ -43,6 +44,8 @@ class FinancialSummary:
     revenue: Decimal | None
     net_income: Decimal | None
     eps: Decimal | None
+    eps_ttm: Decimal | None = None
+    eps_ttm_periods: int = 0
 
 
 @dataclass(frozen=True)
@@ -117,7 +120,7 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
 
         cur.execute(
             """
-            SELECT mr.revenue_period, mr.revenue
+            SELECT mr.revenue_period, mr.revenue, mr.revenue_month_change_percent, mr.revenue_year_change_percent
             FROM monthly_revenues mr
             JOIN symbols s ON s.id = mr.symbol_id
             WHERE s.ticker = %s
@@ -154,15 +157,19 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
     if revenue_rows:
         latest_period = revenue_rows[0][0].isoformat()
         latest_value = revenue_rows[0][1]
-        previous_month_value = revenue_rows[1][1] if len(revenue_rows) >= 2 else None
-        previous_year_value = revenue_rows[12][1] if len(revenue_rows) >= 13 else None
+        revenue_by_period = {row[0]: row[1] for row in revenue_rows}
+        latest_period_date = revenue_rows[0][0]
+        previous_month_period = date(latest_period_date.year - 1, 12, 1) if latest_period_date.month == 1 else date(latest_period_date.year, latest_period_date.month - 1, 1)
+        previous_year_period = date(latest_period_date.year - 1, latest_period_date.month, 1)
+        previous_month_value = revenue_by_period.get(previous_month_period)
+        previous_year_value = revenue_by_period.get(previous_year_period)
 
-        revenue_month_change_percent = None
-        revenue_year_change_percent = None
+        revenue_month_change_percent = revenue_rows[0][2]
+        revenue_year_change_percent = revenue_rows[0][3]
         if latest_value is not None and previous_month_value not in (None, Decimal("0")):
-            revenue_month_change_percent = ((latest_value - previous_month_value) / previous_month_value) * Decimal("100")
+            revenue_month_change_percent = revenue_month_change_percent or ((latest_value - previous_month_value) / previous_month_value) * Decimal("100")
         if latest_value is not None and previous_year_value not in (None, Decimal("0")):
-            revenue_year_change_percent = ((latest_value - previous_year_value) / previous_year_value) * Decimal("100")
+            revenue_year_change_percent = revenue_year_change_percent or ((latest_value - previous_year_value) / previous_year_value) * Decimal("100")
 
         latest_revenue = RevenuePoint(
             revenue_period=latest_period,
@@ -175,6 +182,14 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
     if financial_rows:
         latest_report_date = financial_rows[0][0]
         latest_rows = [row for row in financial_rows if row[0] == latest_report_date]
+
+        eps_by_report_date: dict[object, Decimal] = {}
+        for report_date, _, item_name, item_value in financial_rows:
+            normalized = (item_name or "").lower()
+            if item_value is not None and ("每股盈餘" in item_name or "eps" in normalized):
+                eps_by_report_date.setdefault(report_date, item_value)
+        recent_eps_values = [eps_by_report_date[key] for key in sorted(eps_by_report_date.keys(), reverse=True)[:4]]
+        eps_ttm = sum(recent_eps_values, Decimal("0")) if len(recent_eps_values) == 4 else None
 
         revenue = None
         net_income = None
@@ -195,6 +210,8 @@ def load_stock_report_context(ticker: str, limit: int = 10) -> StockReportContex
             revenue=revenue,
             net_income=net_income,
             eps=eps,
+            eps_ttm=eps_ttm,
+            eps_ttm_periods=len(recent_eps_values),
         )
 
     company_name = None
@@ -256,6 +273,8 @@ def load_market_context_from_yfinance(ticker: str, limit: int = 10) -> StockRepo
                 revenue=Decimal(str(trailing_revenue)) if trailing_revenue is not None else None,
                 net_income=Decimal(str(trailing_net_income)) if trailing_net_income is not None else None,
                 eps=Decimal(str(trailing_eps)) if trailing_eps is not None else None,
+                eps_ttm=Decimal(str(trailing_eps)) if trailing_eps is not None else None,
+                eps_ttm_periods=4 if trailing_eps is not None else 0,
             )
         break
 
@@ -291,6 +310,31 @@ def _fmt_revenue_in_100m(value: Decimal | None) -> str:
         return "N/A"
     amount = value / Decimal("100000000")
     return f"{_quantize_2(amount)} 億元"
+
+
+def _fmt_eps_basis(summary: FinancialSummary | None) -> str:
+    if not summary:
+        return "EPS：N/A"
+    if summary.eps_ttm is not None:
+        return f"TTM EPS：{_fmt_price(summary.eps_ttm)}"
+    return f"近一期 EPS：{_fmt_price(summary.eps)}"
+
+
+def _valuation_eps_ttm(summary: FinancialSummary | None) -> Decimal | None:
+    """Return the EPS basis suitable for PE/valuation calculations.
+
+    Database financial rows are quarterly observations, so PE and target-price
+    math must prefer a trailing-twelve-month EPS aggregated from the latest four
+    quarters. Market fallback providers such as yfinance already expose
+    trailingEps; those are stored in eps_ttm as well.
+    """
+    if summary is None:
+        return None
+    if summary.eps_ttm is not None and summary.eps_ttm > Decimal("0"):
+        return summary.eps_ttm
+    if summary.report_date == "live-info" and summary.eps not in (None, Decimal("0")):
+        return summary.eps
+    return None
 
 
 def _trend_label(prices: list[PricePoint]) -> str:
@@ -334,7 +378,7 @@ def _build_research_snapshot(context: StockReportContext) -> tuple[list[str], li
     valuation = estimate_intrinsic_value(
         ValuationInputs(
             current_price=context.latest.close_price if context.latest else None,
-            eps_ttm=context.latest_financial_summary.eps if context.latest_financial_summary else None,
+            eps_ttm=_valuation_eps_ttm(context.latest_financial_summary),
             revenue_growth_yoy_pct=revenue_growth,
             market_pe_median=Decimal("18"),
         )
@@ -416,7 +460,7 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
         )
     if context.latest_financial_summary:
         fundamental_bits.append(
-            f"最近財報 EPS {_fmt_price(context.latest_financial_summary.eps)}、淨利 {_fmt_revenue_in_100m(context.latest_financial_summary.net_income)}。"
+            f"最近財報近一期 EPS {_fmt_price(context.latest_financial_summary.eps)}、{_fmt_eps_basis(context.latest_financial_summary)}、淨利 {_fmt_revenue_in_100m(context.latest_financial_summary.net_income)}。"
         )
     if not fundamental_bits:
         fundamental_bits.append("尚無完整財報與月營收可供交叉驗證。")
@@ -434,16 +478,17 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
     summary = "價格動能與基本面訊號大致同向，整體評估維持偏正向。" if rating == "偏多" else "目前多空訊號分歧，建議以中性角度追蹤。" if rating == "中立" else "價格與基本面轉弱，宜保守看待。"
     price_observation = f"近 5 日漲幅 {_fmt_percent(pct_5)}，近 10 日漲幅 {_fmt_percent(pct_10)}，短線結構顯示{_trend_label(context.recent_prices)}。"
     fundamental_observation = " ".join(fundamental_bits)
+    base_eps = _valuation_eps_ttm(context.latest_financial_summary)
     trailing_pe = None
-    if context.latest and context.latest.close_price is not None and context.latest_financial_summary and context.latest_financial_summary.eps not in (None, Decimal("0")):
-        trailing_pe = context.latest.close_price / context.latest_financial_summary.eps
+    if context.latest and context.latest.close_price is not None and base_eps not in (None, Decimal("0")):
+        trailing_pe = context.latest.close_price / base_eps
     valuation_observation = (
-        f"以最新收盤價與近一期 EPS 粗估，本益比約 {_fmt_price(trailing_pe)} 倍，評價已不算便宜，後續需由獲利成長消化。"
+        f"以最新收盤價與 TTM EPS 粗估，本益比約 {_fmt_price(trailing_pe)} 倍，評價已不算便宜，後續需由獲利成長消化。"
         if trailing_pe is not None
-        else "目前缺少足夠每股盈餘或價格資料，估值區間暫時無法完整判讀。"
+        else "目前缺少足夠 TTM EPS 或價格資料，估值區間暫時無法完整判讀。"
     )
-    lower_bound = context.latest_financial_summary.eps * Decimal('20') if context.latest_financial_summary and context.latest_financial_summary.eps is not None else None
-    upper_bound = context.latest_financial_summary.eps * Decimal('25') if context.latest_financial_summary and context.latest_financial_summary.eps is not None else None
+    lower_bound = base_eps * Decimal('20') if base_eps is not None else None
+    upper_bound = base_eps * Decimal('25') if base_eps is not None else None
     valuation_label = "合理"
     if context.latest and context.latest.close_price is not None and lower_bound is not None and upper_bound is not None:
         if context.latest.close_price > upper_bound:
@@ -453,11 +498,10 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
         else:
             valuation_label = "合理"
     valuation_range = (
-        f"合理價區間：約 { _fmt_price(lower_bound) } - { _fmt_price(upper_bound) }，高於區間上緣代表市場已提前反映成長。"
+        f"合理價區間：約 { _fmt_price(lower_bound) } - { _fmt_price(upper_bound) }，以 TTM EPS 為基準；高於區間上緣代表市場已提前反映成長。"
         if lower_bound is not None and upper_bound is not None
         else "合理價區間：資料不足。"
     )
-    base_eps = context.latest_financial_summary.eps if context.latest_financial_summary and context.latest_financial_summary.eps is not None else None
     target_price = base_eps * Decimal('22') if base_eps is not None else None
     trend_label = _trend_label(context.recent_prices)
     revenue_yoy = context.latest_revenue.revenue_year_change_percent if context.latest_revenue else None
@@ -483,15 +527,16 @@ def build_report_facts(context: StockReportContext, news_items: list[NewsItem] |
     financial_snapshot = [
         f"營收：{_fmt_revenue_in_100m(context.latest_financial_summary.revenue) if context.latest_financial_summary else 'N/A'}",
         f"淨利：{_fmt_revenue_in_100m(context.latest_financial_summary.net_income) if context.latest_financial_summary else 'N/A'}",
-        f"EPS：{_fmt_price(context.latest_financial_summary.eps) if context.latest_financial_summary else 'N/A'}",
+        f"近一期 EPS：{_fmt_price(context.latest_financial_summary.eps) if context.latest_financial_summary else 'N/A'}",
+        _fmt_eps_basis(context.latest_financial_summary),
         f"月營收 YoY：{_fmt_percent(context.latest_revenue.revenue_year_change_percent) if context.latest_revenue else 'N/A'}",
         f"月營收 MoM：{_fmt_percent(context.latest_revenue.revenue_month_change_percent) if context.latest_revenue else 'N/A'}",
     ]
     research_snapshot, sector_guidance = _build_research_snapshot(context)
     target_price_summary = (
-        f"以 Base Case {_fmt_price(base_eps)} 元 EPS 與 22 倍本益比推估，目標價約 {_fmt_price(target_price)} 元；若市場願意給到 25 倍，Bull Case 可上看 {_fmt_price(base_eps * Decimal('25'))} 元。"
+        f"以 Base Case {_fmt_price(base_eps)} 元 TTM EPS 與 22 倍本益比推估，目標價約 {_fmt_price(target_price)} 元；若市場願意給到 25 倍，Bull Case 可上看 {_fmt_price(base_eps * Decimal('25'))} 元。"
         if base_eps is not None
-        else "目標價：缺乏足夠 EPS 資料，暫時無法推導。"
+        else "目標價：缺乏足夠 TTM EPS 資料，暫時無法推導。"
     )
     news_observation = _news_observation(news_items)
     bull_case = [

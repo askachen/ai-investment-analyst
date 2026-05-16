@@ -178,6 +178,8 @@ def make_context(
             revenue=Decimal("3000000000"),
             net_income=Decimal("500000000"),
             eps=Decimal(eps),
+            eps_ttm=Decimal(eps) * Decimal("4"),
+            eps_ttm_periods=4,
         ),
     )
 
@@ -216,6 +218,30 @@ def test_load_screener_candidates_derives_metrics_from_contexts():
     assert candidates[0].price_10d_change_pct == Decimal("13.33")
     assert candidates[0].pb_ratio == Decimal("4.8")
     assert candidates[1].revenue_mom_pct == Decimal("-1.2")
+
+
+def test_load_screener_candidates_skips_missing_revenue_yoy_instead_of_treating_as_zero():
+    context = make_context(
+        ticker="2330",
+        close_price="850",
+        recent_prices=["850", "840", "830", "820", "800", "790", "780", "770", "760", "750"],
+        revenue_yoy_pct="22.3",
+        revenue_mom_pct="8.5",
+        eps="10.25",
+        average_volume_5d=42000000,
+    )
+    context = StockReportContext(
+        **{**context.__dict__, "latest_revenue": RevenuePoint(
+            revenue_period="2026-03-01",
+            revenue=Decimal("1000000000"),
+            revenue_month_change_percent=Decimal("8.5"),
+            revenue_year_change_percent=None,
+        )}
+    )
+
+    candidates = load_screener_candidates(["2330"], context_loader=lambda ticker: context)
+
+    assert candidates == []
 
 
 def test_latest_average_volume_5d_from_db_returns_none_when_no_volume_rows(monkeypatch):
